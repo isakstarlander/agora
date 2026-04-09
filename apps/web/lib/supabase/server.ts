@@ -7,7 +7,7 @@ export async function createClient() {
   const cookieStore = await cookies()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
@@ -25,12 +25,12 @@ export async function createClient() {
   )
 }
 
-/** Service role client for write operations (ingestion, API routes) */
+/** Secret key client for write operations (ingestion, API routes) */
 export async function createServiceClient() {
   const cookieStore = await cookies()
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    env.SUPABASE_SERVICE_ROLE_KEY,
+    env.SUPABASE_SECRET_KEY,
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
