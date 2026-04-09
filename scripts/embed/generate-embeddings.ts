@@ -1,11 +1,19 @@
-import { VoyageAIClient, type EmbedResponseDataItem } from 'voyageai'
+import { createRequire } from 'node:module'
 import { getSupabaseClient, sleep } from '../ingest/utils.js'
+
+// voyageai ships a broken ESM build that tsx cannot resolve on Node ≥24.
+// Import it via CJS to bypass the ESM resolver.
+const require = createRequire(import.meta.url)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { VoyageAIClient } = require('voyageai') as typeof import('voyageai')
+type EmbedResponseDataItem = import('voyageai').EmbedResponseDataItem
 
 // Single source of truth for embedding dimensions.
 // Must match the vector(N) column definition in the DB migrations.
 const EMBEDDING_MODEL = 'voyage-4-lite'
 const EMBEDDING_DIM   = 1024
-const BATCH_SIZE      = 20   // voyage-4-lite supports up to 128 inputs per call
+const BATCH_SIZE      = 20   // voyage-4-lite: up to 128; free tier (3 RPM) throttles via sleep below
+const INTER_BATCH_SLEEP = 22_000  // 22s between calls → stays under 3 RPM on free tier
 const CHUNK_SIZE      = 500  // characters per document chunk
 const CHUNK_OVERLAP   = 100
 
@@ -13,13 +21,29 @@ const voyage   = new VoyageAIClient({ apiKey: process.env.VOYAGE_API_KEY! })
 const supabase = getSupabaseClient()
 
 async function embedTexts(texts: string[], inputType: 'document' | 'query'): Promise<number[][]> {
-  const response = await voyage.embed({
-    input:           texts,
-    model:           EMBEDDING_MODEL,
-    inputType,
-    outputDimension: EMBEDDING_DIM,
-  })
-  return response.data!.map((d: EmbedResponseDataItem) => d.embedding!)
+  const MAX_RETRIES = 6
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await voyage.embed({
+        input:           texts,
+        model:           EMBEDDING_MODEL,
+        inputType,
+        outputDimension: EMBEDDING_DIM,
+      })
+      return response.data!.map((d: EmbedResponseDataItem) => d.embedding!)
+    } catch (err: unknown) {
+      const statusCode = (err as { statusCode?: number }).statusCode
+      if (statusCode === 429) {
+        // Free tier: 3 RPM. Back off 25s per attempt (gives ~60s between retries).
+        const delay = (attempt + 1) * 25_000
+        console.log(`  [embed] rate-limited, retrying in ${delay / 1000}s…`)
+        await sleep(delay)
+      } else {
+        throw err
+      }
+    }
+  }
+  throw new Error('Voyage AI rate limit exceeded after max retries')
 }
 
 function chunkText(text: string): string[] {
@@ -63,7 +87,7 @@ async function embedManifestoStatements(): Promise<void> {
 
     if (data.length < BATCH_SIZE) break
     offset += BATCH_SIZE
-    await sleep(300)
+    await sleep(INTER_BATCH_SLEEP)
   }
   console.log('[embed] manifesto_statements — done')
 }
@@ -113,7 +137,7 @@ async function embedDocumentChunks(): Promise<void> {
           .from('document_chunks')
           .upsert(rows, { onConflict: 'document_id,chunk_index', ignoreDuplicates: true })
         if (upsertError) throw upsertError
-        await sleep(300)
+        await sleep(INTER_BATCH_SLEEP)
       }
     }
 
