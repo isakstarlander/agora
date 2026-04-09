@@ -4,20 +4,25 @@
   "packageManager": "npm@11.11.0",
   "engines": {
     "node": ">=24.0.0",
-    "npm":  ">=11.0.0"
+    "npm": ">=11.0.0"
   },
-  "workspaces": ["apps/*", "packages/*", "scripts"],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "scripts"
+  ],
   "scripts": {
-    "dev":       "turbo run dev",
-    "build":     "turbo run build",
-    "lint":      "turbo run lint",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "format":    "prettier --write \"**/*.{ts,tsx,json,md}\"",
-    "clean":     "turbo run clean"
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "clean": "turbo run clean"
   },
   "devDependencies": {
-    "turbo":        "latest",
-    "prettier":     "latest",
-    "@types/node":  "latest"
+    "@types/node": "latest",
+    "prettier": "latest",
+    "supabase": "^2.88.1",
+    "turbo": "latest"
   }
 }
