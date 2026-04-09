@@ -11,12 +11,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: 'npm'
+          node-version: .nvmrc
 
       - name: Install dependencies
         run: npm ci --engine-strict=false
