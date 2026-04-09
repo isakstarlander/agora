@@ -2,6 +2,10 @@
   "name": "agora",
   "private": true,
   "packageManager": "npm@11.11.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm":  ">=11.0.0"
+  },
   "workspaces": ["apps/*", "packages/*", "scripts"],
   "scripts": {
     "dev":       "turbo run dev",
