@@ -3,7 +3,6 @@ import { mkdir, unlink, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import Papa from 'papaparse'
-import { createReadStream as fsReadStream } from 'node:fs'
 import {
   getSupabaseClient,
   startIngestionRun,
@@ -11,8 +10,21 @@ import {
   sleep,
 } from './utils.js'
 
+// ESV merged into Statskontoret; new URL pattern as of 2025.
+const BASE_URL = 'https://www.statskontoret.se'
+
+/**
+ * Build the Statskontoret URL for the expenditure (Utgift) definitiv ZIP.
+ * Each year's file contains all expenditure data from 1997 up to that year.
+ */
 function getEsvUrl(year: number): string {
-  return `https://www.esv.se/psidata/arsutfall/GetFile?year=${year}`
+  const fileName = encodeURIComponent(
+    `\u00c5rsutfall utgifter 1997 - ${year}, definitivt.zip`,
+  )
+  return (
+    `${BASE_URL}/OpenDataArsUtfallPage/GetFile` +
+    `?documentType=Utgift&fileType=Zip&fileName=${fileName}&Year=${year}&month=0&status=Definitiv`
+  )
 }
 
 const TMP_DIR = '/tmp/esv-ingest'
@@ -21,15 +33,9 @@ interface EsvRow {
   [key: string]: string
 }
 
-function findKey(row: EsvRow, candidates: string[]): string | undefined {
-  return candidates.find(c =>
-    Object.keys(row).some(k => k.toLowerCase().includes(c.toLowerCase()))
-  )
-}
-
 interface NormalisedRow {
   year: number
-  month: number | null
+  month: number
   expenditure_area_code: string
   expenditure_area_name: string | null
   anslag_code: string | null
@@ -39,83 +45,98 @@ interface NormalisedRow {
   budget_type: string
 }
 
-function normaliseEsvRow(row: EsvRow, year: number): NormalisedRow | null {
-  const amountKey = findKey(row, ['utfall', 'tkr', 'belopp'])
-  if (!amountKey) return null
+/**
+ * Parse a row from the new Statskontoret multi-year CSV.
+ *
+ * Column names (UTF-8, semicolon-delimited):
+ *   Utgiftsområde, Utgiftsområdesnamn, Anslag, Anslagsnamn, År,
+ *   Ingående överföringsbelopp, Statens budget, Ändringsbudgetar,
+ *   Indragningar, Utnyttjad del av medgivet överskridande, Utfall, …
+ *
+ * Amounts use Swedish decimal notation (comma separator) and are in MSEK.
+ * month = 0 represents full-year (annual) data.
+ */
+function normaliseEsvRow(row: EsvRow): NormalisedRow | null {
+  const yearRaw = row['År']?.trim()
+  if (!yearRaw) return null
+  const year = parseInt(yearRaw, 10)
+  if (isNaN(year)) return null
 
-  const rawAmount = row[amountKey]?.replace(/\s/g, '').replace(',', '.')
-  if (!rawAmount || rawAmount === '') return null
+  // Skip summary rows (Utgiftstak, Marginal, etc.) that lack an expenditure area code
+  const uoCode = row['Utgiftsområde']?.trim() || ''
+  if (!uoCode) return null
 
-  const amountTsek = parseFloat(rawAmount)
-  if (isNaN(amountTsek)) return null
-
-  const monthKey   = findKey(row, ['månad', 'month'])
-  const uoCodeKey  = findKey(row, ['utgiftsområde nr', 'uo nr', 'uo_nr'])
-  const uoNameKey  = findKey(row, ['utgiftsområdesnamn', 'uo namn'])
-  const anslagKey  = findKey(row, ['anslagsnummer', 'anslag nr'])
-  const nameKey    = findKey(row, ['anslagsnamn'])
-  const agencyKey  = findKey(row, ['myndighet'])
-
-  const monthRaw = monthKey ? row[monthKey] : null
-  const month    = monthRaw && monthRaw !== '0' && monthRaw !== '' ? parseInt(monthRaw, 10) : null
+  // Utfall column; Swedish decimal comma; unit = MSEK
+  const utfallRaw = row['Utfall']?.replace(/\s/g, '').replace(',', '.')
+  if (!utfallRaw || utfallRaw === '') return null
+  const amountMsek = parseFloat(utfallRaw)
+  if (isNaN(amountMsek)) return null
 
   return {
     year,
-    month,
-    expenditure_area_code: (uoCodeKey ? row[uoCodeKey] : '') || '',
-    expenditure_area_name: uoNameKey ? row[uoNameKey] || null : null,
-    anslag_code:           anslagKey ? row[anslagKey] || null : null,
-    anslag_name:           nameKey ? row[nameKey] || null : null,
-    agency:                agencyKey ? row[agencyKey] || null : null,
-    amount_sek:            amountTsek * 1000, // TSEK → SEK
+    month:                 0,  // annual data; 0 = full year (required for upsert key)
+    expenditure_area_code: uoCode,
+    expenditure_area_name: row['Utgiftsområdesnamn']?.trim() || null,
+    anslag_code:           row['Anslag']?.trim() || null,
+    anslag_name:           row['Anslagsnamn']?.trim() || null,
+    agency:                null,  // not available in new format
+    amount_sek:            amountMsek * 1_000_000,  // MSEK → SEK
     budget_type:           'utfall',
   }
 }
 
-async function downloadAndParseYear(year: number): Promise<(NormalisedRow | null)[]> {
+/**
+ * Find the latest available definitiv file, download it, and parse all rows.
+ * The multi-year file covers 1997 up to `fileYear` — one download replaces
+ * the old per-year loop.
+ */
+async function downloadAndParse(currentYear: number): Promise<NormalisedRow[]> {
   await mkdir(TMP_DIR, { recursive: true })
-  const zipPath = join(TMP_DIR, `esv_${year}.zip`)
-  const csvDir  = join(TMP_DIR, `esv_${year}`)
+
+  // Current year likely has no definitiv data yet; probe backwards
+  let fetchUrl: string | null = null
+  let fileYear = 0
+  for (let y = currentYear - 1; y >= currentYear - 3; y--) {
+    const url = getEsvUrl(y)
+    const probe = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(10_000) })
+    const len   = Number(probe.headers.get('content-length') ?? 0)
+    if (probe.ok && len > 1_000) { fetchUrl = url; fileYear = y; break }
+  }
+  if (!fetchUrl) throw new Error('Could not find a recent definitiv ESV file')
+
+  console.log(`  Downloading multi-year expenditure file (1997\u2013${fileYear})\u2026`)
+  const zipPath = join(TMP_DIR, 'esv_latest.zip')
+  const csvDir  = join(TMP_DIR, 'esv_latest')
   await mkdir(csvDir, { recursive: true })
 
-  const url = getEsvUrl(year)
-  console.log(`  Downloading ESV data for ${year}...`)
-  const res = await fetch(url)
-  if (!res.ok) {
-    console.warn(`  ESV data not available for ${year}: HTTP ${res.status}`)
-    return []
-  }
-
-  const writer = createWriteStream(zipPath)
-  await pipeline(res.body as unknown as NodeJS.ReadableStream, writer)
+  const res = await fetch(fetchUrl, { signal: AbortSignal.timeout(120_000) })
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ESV data`)
+  await pipeline(res.body as unknown as NodeJS.ReadableStream, createWriteStream(zipPath))
 
   const unzipper = await import('unzipper')
-  await pipeline(
-    createReadStream(zipPath),
-    unzipper.Extract({ path: csvDir }),
-  )
+  await pipeline(createReadStream(zipPath), unzipper.Extract({ path: csvDir }))
 
-  const files = await readdir(csvDir)
+  const files    = await readdir(csvDir)
   const csvFiles = files.filter(f => f.toLowerCase().endsWith('.csv'))
 
-  const rows: (NormalisedRow | null)[] = []
+  const rows: NormalisedRow[] = []
   for (const csvFile of csvFiles) {
     const content = await new Promise<string>((resolve, reject) => {
       let data = ''
-      const stream = fsReadStream(join(csvDir, csvFile))
-      stream.on('data', chunk => { data += (chunk as Buffer).toString('latin1') })
+      const stream = createReadStream(join(csvDir, csvFile))
+      stream.on('data', chunk => { data += (chunk as Buffer).toString('utf-8') })
       stream.on('end', () => resolve(data))
       stream.on('error', reject)
     })
 
     const parsed = Papa.parse<EsvRow>(content, {
-      header: true,
+      header:         true,
       skipEmptyLines: true,
-      delimiter: ';',
+      delimiter:      ';',
     })
-
     for (const row of parsed.data) {
-      rows.push(normaliseEsvRow(row, year))
+      const n = normaliseEsvRow(row)
+      if (n) rows.push(n)
     }
   }
 
@@ -131,31 +152,29 @@ async function main() {
   let totalInserted  = 0
 
   const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - i)
+  const oldestYear  = currentYear - 10
 
-  for (const year of years) {
-    try {
-      const rows = await downloadAndParseYear(year)
-      const validRows = rows.filter((r): r is NormalisedRow => r !== null)
-      if (validRows.length === 0) continue
+  try {
+    const allRows   = await downloadAndParse(currentYear)
+    const validRows = allRows.filter(r => r.year >= oldestYear)
+    console.log(`  Parsed ${allRows.length} total rows; keeping ${validRows.length} (${oldestYear}\u2013)`)
 
-      totalProcessed += validRows.length
+    totalProcessed = validRows.length
 
-      const BATCH = 500
-      for (let i = 0; i < validRows.length; i += BATCH) {
-        const batch = validRows.slice(i, i + BATCH)
-        const { error } = await client
-          .from('budget_outcomes')
-          .upsert(batch, { onConflict: 'year,month,anslag_code,budget_type', ignoreDuplicates: false })
-        if (error) throw error
-        totalInserted += batch.length
-        await sleep(200)
-      }
-      console.log(`  Year ${year}: ${validRows.length} rows ingested`)
-    } catch (err) {
-      console.warn(`  Failed for year ${year}:`, err)
-      errors.push({ year, error: String(err) })
+    const BATCH = 500
+    for (let i = 0; i < validRows.length; i += BATCH) {
+      const batch = validRows.slice(i, i + BATCH)
+      const { error } = await client
+        .from('budget_outcomes')
+        .upsert(batch, { onConflict: 'year,month,anslag_code,budget_type', ignoreDuplicates: false })
+      if (error) throw error
+      totalInserted += batch.length
+      await sleep(200)
     }
+    console.log(`  Ingested ${totalInserted} rows`)
+  } catch (err) {
+    console.error('ESV ingestion failed:', err)
+    errors.push(String(err))
   }
 
   await finishIngestionRun(client, runId, {
