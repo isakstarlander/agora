@@ -1,0 +1,19 @@
+{
+  "name": "agora",
+  "private": true,
+  "packageManager": "npm@11.11.0",
+  "workspaces": ["apps/*", "packages/*", "scripts"],
+  "scripts": {
+    "dev":       "turbo run dev",
+    "build":     "turbo run build",
+    "lint":      "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format":    "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "clean":     "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo":        "latest",
+    "prettier":     "latest",
+    "@types/node":  "latest"
+  }
+}

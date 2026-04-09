@@ -1,0 +1,25 @@
+{
+  "name": "@agora/scripts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest:riksdagen":  "npx tsx ingest/riksdagen.ts",
+    "ingest:esv":        "npx tsx ingest/esv.ts",
+    "ingest:manifesto":  "npx tsx ingest/manifesto.ts",
+    "embed":             "npx tsx embed/generate-embeddings.ts",
+    "typecheck":         "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "dotenv": "latest",
+    "papaparse": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/papaparse": "latest",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}
