@@ -1,25 +1,25 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchRiksdagen, sleep } from './utils.js'
 
-interface RiksdagenVotering {
+/**
+ * One row returned by voteringlista with gruppering=votering_id.
+ *
+ * Note: the API returns capitalised field names for vote counts (Ja, Nej, …).
+ * Pagination (p=) is ignored by this endpoint — all unique votes for the rm
+ * are returned in a single response. Use sz large enough to cover the full year
+ * (empirically: ≤ ~700 unique votes per riksår, so 10 000 is safe).
+ */
+interface RiksdagenVoteSummary {
   votering_id: string
-  rm: string
-  beteckning: string
-  punkt: string
-  titel: string
-  datum?: string
-  ja?: string | number
-  nej?: string | number
-  'frånvarande'?: string | number
-  'avstår'?: string | number
-  utfall?: string
-  dokument_id?: string
+  Ja:          string | number
+  Nej:         string | number
+  Frånvarande: string | number
+  Avstår:      string | number
 }
 
 interface VoteringListResponse {
   voteringlista: {
-    votering: RiksdagenVotering | RiksdagenVotering[]
-    '@sidor': string
+    votering: RiksdagenVoteSummary | RiksdagenVoteSummary[]
   }
 }
 
@@ -55,6 +55,12 @@ interface VoteResultResponse {
   }
   // Alternate shape returned by some vote result endpoints (källa=RIM-vot)
   votering?: {
+    dokument?: {
+      titel?:       string
+      datum?:       string
+      dok_id?:      string
+      beteckning?:  string
+    }
     dokvotering: {
       votering: RiksdagenVoteResult | RiksdagenVoteResult[]
     }
@@ -88,112 +94,121 @@ export async function ingestVotes(
   rms: string[],
 ): Promise<{ inserted: number; updated: number }> {
   let totalInserted = 0
-  const PAGE_SIZE = 100
 
   for (const rm of rms) {
-    let page = 1
-    let hasMore = true
+    // The voteringlista API with gruppering=votering_id returns one row per
+    // unique vote with aggregate counts (Ja, Nej, Frånvarande, Avstår).
+    //
+    // IMPORTANT API quirks discovered through testing:
+    //   1. @sidor is never present — pagination (p=) is completely ignored.
+    //   2. All unique votes for the rm are returned in a single response.
+    //   3. sz controls how many unique votes are returned; use a large value
+    //      to ensure the full year is captured (empirically ≤ ~700/year).
+    //   4. Field names for counts are capitalised: Ja, Nej, Frånvarande, Avstår.
+    const rmEncoded = encodeURIComponent(rm)
+    const url =
+      `https://data.riksdagen.se/voteringlista/?rm=${rmEncoded}` +
+      `&gruppering=votering_id&sz=10000&utformat=json`
 
-    while (hasMore) {
-      // Encode the slash in rm (e.g. "2025/26" → "2025%2F26") so the API
-      // interprets it as a query-string value, not a path segment.
-      const rmEncoded = encodeURIComponent(rm)
-      const url =
-        `https://data.riksdagen.se/voteringlista/?rm=${rmEncoded}` +
-        `&sz=${PAGE_SIZE}&p=${page}&utformat=json`
-
-      const data = await fetchRiksdagen<VoteringListResponse>(url)
-      const lista = data.voteringlista
-
-      const totalPages = parseInt(lista['@sidor'] ?? '1', 10)
-      console.log(`  rm=${rm} page=${page}/${totalPages}`)
-
-      const raw = lista.votering
-      if (!raw) { hasMore = false; break }
-      const voteList = Array.isArray(raw) ? raw : [raw]
-      if (voteList.length === 0) { hasMore = false; break }
-
-      // Deduplicate by votering_id — the API occasionally returns the same vote
-      // twice within a single page, which triggers a PG21000 conflict error.
-      const seenVotes = new Set<string>()
-      const uniqueVoteList = voteList.filter(v => {
-        if (seenVotes.has(v.votering_id)) return false
-        seenVotes.add(v.votering_id)
-        return true
-      })
-
-      const voteRows = uniqueVoteList.map(v => ({
-        id:            v.votering_id,
-        document_id:   v.dokument_id ?? null,
-        rm:            v.rm,
-        date:          v.datum ? v.datum.split('T')[0] : null,
-        description:   v.titel ?? null,
-        yes_count:     Number(v.ja ?? 0),
-        no_count:      Number(v.nej ?? 0),
-        abstain_count: Number(v['avstår'] ?? 0),
-        absent_count:  Number(v['frånvarande'] ?? 0),
-        outcome:       v.utfall ?? null,
-      }))
-
-      const { error } = await client
-        .from('votes')
-        .upsert(voteRows, { onConflict: 'id', ignoreDuplicates: false })
-      if (error) throw error
-
-      totalInserted += uniqueVoteList.length
-
-      // Fetch individual vote results
-      for (const vote of uniqueVoteList) {
-        try {
-          const resultUrl = `https://data.riksdagen.se/votering/${vote.votering_id}/json`
-          const resultData = await fetchRiksdagen<VoteResultResponse>(resultUrl)
-          const rawResults = extractVoteResults(resultData)
-          if (rawResults.length === 0) continue
-
-          // Diagnostic: flag alternate-shape responses so we can verify field names
-          const isAlternateShape = Boolean(resultData.votering)
-          if (isAlternateShape && rawResults.length > 0) {
-            const sample = rawResults[0] as unknown as Record<string, unknown>
-            const knownVoteValue = sample.rost ?? sample.votering
-            console.log(
-              `  [alt-shape] vote=${vote.votering_id} källa=${sample.källa ?? '?'} ` +
-              `fields=${Object.keys(sample).join(',')} voteValue=${knownVoteValue}`,
-            )
-          }
-
-          // Deduplicate by (vote_id, member_id) — the API occasionally returns
-          // duplicate entries for the same member in a single vote response.
-          // Skip items without intressent_id — alternate shape may use banknummer
-          // instead; those cannot be joined to members table.
-          const seen = new Set<string>()
-          const resultRows = rawResults
-            .filter(r => {
-              if (!r.intressent_id) return false
-              const key = `${r.votering_id}:${r.intressent_id}`
-              if (seen.has(key)) return false
-              seen.add(key)
-              return true
-            })
-            .map(r => ({
-              vote_id:   r.votering_id,
-              member_id: r.intressent_id!,
-              party:     r.partibet ?? r.parti ?? 'okänt',
-              result:    resolveRost(r),
-            }))
-
-          await client
-            .from('vote_results')
-            .upsert(resultRows, { onConflict: 'vote_id,member_id', ignoreDuplicates: true })
-          await sleep(1100)
-        } catch (err) {
-          console.warn(`  Failed to fetch results for vote ${vote.votering_id}:`, err)
-        }
-      }
-
-      hasMore = page < totalPages
-      page++
-      await sleep(1100)
+    const data = await fetchRiksdagen<VoteringListResponse>(url)
+    const raw = data.voteringlista?.votering
+    if (!raw) {
+      console.log(`  rm=${rm}: no votes found`)
+      continue
     }
+    const voteList = Array.isArray(raw) ? raw : [raw]
+    console.log(`  rm=${rm}: ${voteList.length} unique votes`)
+
+    // Insert vote rows with aggregate counts.
+    // titel, datum, outcome, and document_id are not available from the
+    // voteringlista summary — they are enriched below from votering/{id}/json.
+    // ignoreDuplicates: true avoids resetting previously-enriched metadata
+    // (date, description, document_id) on re-runs, since vote counts don't
+    // change after a vote is cast.
+    const voteRows = voteList.map(v => ({
+      id:            v.votering_id,
+      rm,
+      yes_count:     Number(v.Ja          ?? 0),
+      no_count:      Number(v.Nej         ?? 0),
+      abstain_count: Number(v.Avstår      ?? 0),
+      absent_count:  Number(v.Frånvarande ?? 0),
+    }))
+
+    const { error } = await client
+      .from('votes')
+      .upsert(voteRows, { onConflict: 'id', ignoreDuplicates: true })
+    if (error) throw error
+
+    totalInserted += voteList.length
+
+    // Fetch per-member results for each vote and enrich vote metadata.
+    for (const vote of voteList) {
+      try {
+        const resultUrl = `https://data.riksdagen.se/votering/${vote.votering_id}/json`
+        const resultData = await fetchRiksdagen<VoteResultResponse>(resultUrl)
+        const rawResults = extractVoteResults(resultData)
+        if (rawResults.length === 0) continue
+
+        // Enrich vote row with metadata from the per-vote document object.
+        // documents are ingested before votes in the same run, so the FK to
+        // documents(id) should hold for same-rm votes. Cross-rm dok_ids are
+        // handled by falling back to skipping document_id on FK error (23503).
+        const dok = resultData.votering?.dokument
+        if (dok) {
+          const meta = {
+            date:        dok.datum ? dok.datum.split('T')[0].split(' ')[0] : null,
+            description: dok.titel ?? null,
+            document_id: dok.dok_id ?? null,
+          }
+          const { error: updateErr } = await client
+            .from('votes')
+            .update(meta)
+            .eq('id', vote.votering_id)
+          if (updateErr) {
+            if (updateErr.code === '23503') {
+              // FK violation: dok_id not in documents table (cross-rm reference).
+              // Retry without document_id so date/description are still saved.
+              const { error: retryErr } = await client
+                .from('votes')
+                .update({ date: meta.date, description: meta.description })
+                .eq('id', vote.votering_id)
+              if (retryErr) console.warn(`  Failed to enrich vote ${vote.votering_id}:`, retryErr.message)
+            } else {
+              console.warn(`  Failed to enrich vote ${vote.votering_id}:`, updateErr.message)
+            }
+          }
+        }
+
+        // Deduplicate by (vote_id, member_id) — the API occasionally returns
+        // duplicate entries for the same member in a single vote response.
+        // Skip items without intressent_id — alternate shape may use banknummer
+        // instead; those cannot be joined to members table.
+        const seen = new Set<string>()
+        const resultRows = rawResults
+          .filter(r => {
+            if (!r.intressent_id) return false
+            const key = `${r.votering_id}:${r.intressent_id}`
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+          .map(r => ({
+            vote_id:   r.votering_id,
+            member_id: r.intressent_id!,
+            party:     r.partibet ?? r.parti ?? 'okänt',
+            result:    resolveRost(r),
+          }))
+
+        await client
+          .from('vote_results')
+          .upsert(resultRows, { onConflict: 'vote_id,member_id', ignoreDuplicates: true })
+        await sleep(200)
+      } catch (err) {
+        console.warn(`  Failed to fetch results for vote ${vote.votering_id}:`, err)
+      }
+    }
+
+    await sleep(200)
   }
 
   return { inserted: totalInserted, updated: 0 }
