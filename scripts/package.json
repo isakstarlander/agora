@@ -4,21 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ingest:riksdagen":  "npx tsx ingest/riksdagen.ts",
-    "ingest:esv":        "npx tsx ingest/esv.ts",
-    "ingest:manifesto":  "npx tsx ingest/manifesto.ts",
-    "embed":             "npx tsx embed/generate-embeddings.ts",
-    "typecheck":         "tsc --noEmit"
+    "ingest:riksdagen": "npx tsx ingest/riksdagen.ts",
+    "ingest:esv": "npx tsx ingest/esv.ts",
+    "ingest:manifesto": "npx tsx ingest/manifesto.ts",
+    "embed": "npx tsx embed/generate-embeddings.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",
+    "@types/unzipper": "^0.10.11",
     "dotenv": "latest",
     "papaparse": "latest",
+    "unzipper": "^0.12.3",
+    "voyageai": "^0.2.1",
     "zod": "latest"
   },
   "devDependencies": {
-    "@types/papaparse": "latest",
     "@types/node": "latest",
+    "@types/papaparse": "latest",
     "tsx": "latest",
     "typescript": "latest"
   }

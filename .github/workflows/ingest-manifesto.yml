@@ -1,0 +1,32 @@
+name: Ingest Manifesto Data
+
+on:
+  workflow_dispatch:   # Manual trigger only — run quarterly after elections
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false
+
+      - name: Run Manifesto ingestion
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY:      ${{ secrets.SUPABASE_SECRET_KEY }}
+          MANIFESTO_API_KEY:        ${{ secrets.MANIFESTO_API_KEY }}
+        run: npm run ingest:manifesto --workspace=@agora/scripts
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Manifesto ingestion failed. Check ingestion_runs table for details."
