@@ -9,23 +9,36 @@ import {
 const API_KEY  = process.env.MANIFESTO_API_KEY
 const BASE_URL = 'https://manifesto-project.wzb.eu/api/v1'
 
-if (!API_KEY) {
+if (!API_KEY || API_KEY.trim() === '') {
   console.error('MANIFESTO_API_KEY is not set')
   process.exit(1)
 }
 
 const SWEDISH_PARTIES = [
-  { manifesto_id: '41320', agora_code: 'S',  name: 'Socialdemokraterna' },
-  { manifesto_id: '41110', agora_code: 'M',  name: 'Moderaterna' },
-  { manifesto_id: '41953', agora_code: 'SD', name: 'Sverigedemokraterna' },
-  { manifesto_id: '41430', agora_code: 'C',  name: 'Centerpartiet' },
-  { manifesto_id: '41221', agora_code: 'V',  name: 'Vänsterpartiet' },
-  { manifesto_id: '41521', agora_code: 'KD', name: 'Kristdemokraterna' },
-  { manifesto_id: '41420', agora_code: 'L',  name: 'Liberalerna' },
-  { manifesto_id: '41952', agora_code: 'MP', name: 'Miljöpartiet' },
+  { manifesto_id: '11320', agora_code: 'S',  name: 'Socialdemokraterna' },
+  { manifesto_id: '11620', agora_code: 'M',  name: 'Moderaterna' },
+  { manifesto_id: '11710', agora_code: 'SD', name: 'Sverigedemokraterna' },
+  { manifesto_id: '11810', agora_code: 'C',  name: 'Centerpartiet' },
+  { manifesto_id: '11220', agora_code: 'V',  name: 'Vänsterpartiet' },
+  { manifesto_id: '11520', agora_code: 'KD', name: 'Kristdemokraterna' },
+  { manifesto_id: '11420', agora_code: 'L',  name: 'Liberalerna' },
+  { manifesto_id: '11110', agora_code: 'MP', name: 'Miljöpartiet' },
 ]
 
 const ELECTION_YEARS = [2022, 2018, 2014, 2010]
+// Swedish national elections are always held in September
+const ELECTION_MONTH: Record<number, string> = { 2022: '09', 2018: '09', 2014: '09', 2010: '09' }
+
+/** Fetch the latest corpus metadata version string (e.g. "2025-1"). */
+async function fetchLatestVersion(): Promise<string> {
+  const res = await fetch(`${BASE_URL}/list_metadata_versions`)
+  if (!res.ok) throw new Error(`Could not fetch corpus versions: HTTP ${res.status}`)
+  const json = await res.json() as string[] | { versions?: string[] }
+  const versions = Array.isArray(json) ? json : (json.versions ?? [])
+  const latest = versions.at(-1)
+  if (!latest) throw new Error('No corpus versions found')
+  return latest
+}
 
 const TextItemSchema = z.object({
   text:     z.string(),
@@ -35,18 +48,24 @@ const TextItemSchema = z.object({
 
 type TextItem = z.infer<typeof TextItemSchema>
 
-async function fetchManifestoTexts(partyId: string, electionYear: number): Promise<TextItem[]> {
-  const key = `${partyId}_${electionYear}`
-  const url = `${BASE_URL}/texts/download_all?api_key=${API_KEY}&keys[]=${key}`
-  const res = await fetch(url)
+async function fetchManifestoTexts(
+  partyId: string,
+  electionYear: number,
+  version: string,
+): Promise<TextItem[]> {
+  const month = ELECTION_MONTH[electionYear] ?? '09'
+  const key   = `${partyId}_${electionYear}${month}`
+  const url   = `${BASE_URL}/texts_and_annotations?api_key=${API_KEY}&keys[]=${key}&version=${version}`
+  const res   = await fetch(url)
   if (!res.ok) {
     if (res.status === 404) return []
-    throw new Error(`Manifesto API HTTP ${res.status} for ${key}`)
+    throw new Error(`Manifesto API HTTP ${res.status} for key ${key} (version ${version})`)
   }
-  const json = await res.json() as Record<string, unknown>
-  const items = json[key] as unknown[]
-  if (!Array.isArray(items)) return []
-  return items.map(item => TextItemSchema.parse(item))
+  const json = await res.json() as { items?: Array<{ items?: unknown[] }>; missing_items?: string[] }
+  if (!json.items?.length) return []
+  // Each entry in items[] corresponds to one requested key; its .items[] is the statement list
+  const allItems: unknown[] = json.items.flatMap(entry => entry.items ?? [])
+  return allItems.map(item => TextItemSchema.parse(item))
 }
 
 async function main() {
@@ -55,11 +74,14 @@ async function main() {
   const errors: unknown[] = []
   let totalInserted = 0
 
+  const version = await fetchLatestVersion()
+  console.log(`Using Manifesto corpus version: ${version}`)
+
   for (const year of ELECTION_YEARS) {
     for (const party of SWEDISH_PARTIES) {
       console.log(`  Fetching ${party.agora_code} ${year}...`)
       try {
-        const items = await fetchManifestoTexts(party.manifesto_id, year)
+        const items = await fetchManifestoTexts(party.manifesto_id, year, version)
         if (items.length === 0) {
           console.log(`  No data for ${party.agora_code} ${year}, skipping.`)
           continue
