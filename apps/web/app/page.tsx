@@ -1,7 +1,8 @@
+import { redirect } from 'next/navigation'
+
+// Fallback redirect — the proxy handles locale routing for all paths,
+// but this covers any edge case where proxy is bypassed.
 export default function RootPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-4xl font-bold">Agora</h1>
-    </main>
-  )
+  redirect('/sv')
 }
+
