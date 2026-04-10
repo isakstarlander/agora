@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "latest",
     "@types/unzipper": "^0.10.11",
     "dotenv": "latest",
+    "node-html-parser": "latest",
     "papaparse": "latest",
     "unzipper": "^0.12.3",
     "voyageai": "^0.2.1",

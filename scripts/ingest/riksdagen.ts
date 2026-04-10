@@ -2,6 +2,7 @@ import { getSupabaseClient, startIngestionRun, finishIngestionRun, sleep } from 
 import { ingestMembers } from './members.js'
 import { ingestDocuments } from './documents.js'
 import { ingestVotes } from './voting.js'
+import { ingestDocumentTexts } from './document-texts.js'
 
 /** Returns the riksmöten to ingest: current + previous */
 function getRiksmotenToIngest(): string[] {
@@ -44,6 +45,12 @@ async function main() {
     const voteCounts = await ingestVotes(client, rms)
     totalProcessed += voteCounts.inserted + voteCounts.updated
     totalInserted  += voteCounts.inserted
+    await sleep(2000)
+
+    console.log('Fetching document text bodies...')
+    const textCounts = await ingestDocumentTexts(client)
+    totalProcessed += textCounts.inserted + textCounts.skipped
+    totalInserted  += textCounts.inserted
     await sleep(2000)
 
     console.log(`Ingestion complete. Processed: ${totalProcessed}`)
