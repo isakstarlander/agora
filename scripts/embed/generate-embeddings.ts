@@ -11,9 +11,10 @@ type EmbedResponseDataItem = import('voyageai').EmbedResponseDataItem
 // Single source of truth for embedding dimensions.
 // Must match the vector(N) column definition in the DB migrations.
 const EMBEDDING_MODEL = 'voyage-4-lite'
-const EMBEDDING_DIM   = 1024
-const BATCH_SIZE      = 20   // voyage-4-lite: up to 128; free tier (3 RPM) throttles via sleep below
-const INTER_BATCH_SLEEP = 22_000  // 22s between calls → stays under 3 RPM on free tier
+const EMBEDDING_DIM   = 512
+const BATCH_SIZE      = 128  // voyage-4-lite API maximum; reduces round-trips
+const DB_WRITE_BATCH  = 20   // rows per upsert — each row is ~2KB of vector data; keep under PostgREST's 8s statement timeout
+const INTER_BATCH_SLEEP = 50   // 50ms + ~300ms network ≈ 170 RPM — well within Tier 1's 2000 RPM / 16M TPM limits
 const CHUNK_SIZE      = 500  // characters per document chunk
 const CHUNK_OVERLAP   = 100
 
@@ -62,19 +63,18 @@ function chunkText(text: string): string[] {
 
 async function embedManifestoStatements(): Promise<void> {
   console.log('[embed] manifesto_statements — fetching unembedded rows...')
-  let offset = 0
 
   while (true) {
     const { data, error } = await supabase
       .from('manifesto_statements')
       .select('id, text')
       .is('embedding', null)
-      .range(offset, offset + BATCH_SIZE - 1)
+      .limit(BATCH_SIZE)
 
     if (error) throw error
     if (!data || data.length === 0) break
 
-    console.log(`[embed] manifesto batch offset=${offset} count=${data.length}`)
+    console.log(`[embed] manifesto batch count=${data.length}`)
     const embeddings = await embedTexts(data.map(r => r.text), 'document')
 
     for (let i = 0; i < data.length; i++) {
@@ -85,64 +85,94 @@ async function embedManifestoStatements(): Promise<void> {
       if (updateError) throw updateError
     }
 
+    // Do NOT advance offset — processed rows gain a non-null embedding and drop
+    // out of the IS NULL filter, so the next fetch at offset=0 always returns
+    // the next unprocessed batch. Advancing offset would skip rows.
     if (data.length < BATCH_SIZE) break
-    offset += BATCH_SIZE
     await sleep(INTER_BATCH_SLEEP)
   }
   console.log('[embed] manifesto_statements — done')
 }
 
 async function embedDocumentChunks(): Promise<void> {
-  console.log('[embed] document_chunks — fetching documents without chunks...')
+  console.log('[embed] document_chunks — phase 1: inserting text chunks...')
 
-  // Process in pages to avoid loading the entire corpus at once
-  const PAGE = 100
+  // Phase 1: Insert chunk rows WITHOUT embeddings. pgvector HNSW does not index
+  // NULL values, so these inserts are fast and never hit the statement timeout.
+  const PAGE = 200
   let offset = 0
 
   while (true) {
-    const { data: docs, error } = await supabase
-      .from('document_texts')
-      .select('document_id, body_text')
-      .not('body_text', 'is', null)
+    const { data: ids, error } = await supabase
+      .from('documents')
+      .select('id')
+      .in('type', ['mot', 'prop', 'bet'])
       .range(offset, offset + PAGE - 1)
 
     if (error) throw error
-    if (!docs || docs.length === 0) break
+    if (!ids || ids.length === 0) break
 
-    for (const doc of docs) {
-      if (!doc.body_text) continue
-
-      // Skip if already chunked
+    for (const { id: documentId } of ids) {
       const { count } = await supabase
         .from('document_chunks')
         .select('id', { count: 'exact', head: true })
-        .eq('document_id', doc.document_id)
+        .eq('document_id', documentId)
       if ((count ?? 0) > 0) continue
 
-      const chunks = chunkText(doc.body_text)
+      const { data: textRow, error: textError } = await supabase
+        .from('document_texts')
+        .select('body_text')
+        .eq('document_id', documentId)
+        .maybeSingle()
+      if (textError) throw textError
+      if (!textRow?.body_text) continue
 
-      // Embed in sub-batches
-      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-        const subChunks = chunks.slice(i, i + BATCH_SIZE)
-        const embeddings = await embedTexts(subChunks, 'document')
+      const chunks = chunkText(textRow.body_text)
+      console.log(`  [embed] inserting chunks for ${documentId} — ${chunks.length} chunks`)
 
-        const rows = subChunks.map((text, idx) => ({
-          document_id: doc.document_id,
+      // Insert in DB_WRITE_BATCH-sized batches without embedding (no HNSW cost)
+      for (let i = 0; i < chunks.length; i += DB_WRITE_BATCH) {
+        const rows = chunks.slice(i, i + DB_WRITE_BATCH).map((text, idx) => ({
+          document_id: documentId,
           chunk_index: i + idx,
           text,
-          embedding:   embeddings[idx] as unknown as string,
         }))
-
-        const { error: upsertError } = await supabase
+        const { error: insertError } = await supabase
           .from('document_chunks')
           .upsert(rows, { onConflict: 'document_id,chunk_index', ignoreDuplicates: true })
-        if (upsertError) throw upsertError
-        await sleep(INTER_BATCH_SLEEP)
+        if (insertError) throw insertError
       }
     }
 
-    if (docs.length < PAGE) break
+    if (ids.length < PAGE) break
     offset += PAGE
+  }
+
+  // Phase 2: Embed all chunks that have no embedding yet, updating one row at a time.
+  // Matches the manifesto pattern — each UPDATE touches one HNSW node, always fast.
+  console.log('[embed] document_chunks — phase 2: embedding unembedded chunks...')
+  while (true) {
+    const { data, error } = await supabase
+      .from('document_chunks')
+      .select('id, text')
+      .is('embedding', null)
+      .limit(BATCH_SIZE)
+
+    if (error) throw error
+    if (!data || data.length === 0) break
+
+    console.log(`  [embed] document_chunks batch count=${data.length}`)
+    const embeddings = await embedTexts(data.map(r => r.text), 'document')
+
+    for (let i = 0; i < data.length; i++) {
+      const { error: updateError } = await supabase
+        .from('document_chunks')
+        .update({ embedding: embeddings[i] as unknown as string })
+        .eq('id', data[i]!.id)
+      if (updateError) throw updateError
+    }
+
+    await sleep(INTER_BATCH_SLEEP)
   }
   console.log('[embed] document_chunks — done')
 }

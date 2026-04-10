@@ -90,7 +90,6 @@ export async function ingestDocumentTexts(
           .upsert(
             {
               document_id: doc.id,
-              body_html:   html,
               body_text:   bodyText,
               word_count:  wordCount(bodyText),
               language:    'sv',

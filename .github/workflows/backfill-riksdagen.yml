@@ -1,0 +1,36 @@
+name: Backfill Riksdagen
+
+on:
+  workflow_dispatch:
+    inputs:
+      riksmoten:
+        description: 'Comma-separated riksmöten to ingest, e.g. "2022/23,2023/24"'
+        required: true
+        type: string
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: .nvmrc
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false
+
+      - name: Run Riksdagen backfill
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY:      ${{ secrets.SUPABASE_SECRET_KEY }}
+          RIKSMOTEN_OVERRIDE:       ${{ inputs.riksmoten }}
+        run: npm run ingest:riksdagen --workspace=@agora/scripts
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Riksdagen backfill failed for riksmöten: ${{ inputs.riksmoten }}"

@@ -5,8 +5,14 @@ import { ingestVotes } from './voting.js'
 import { ingestDocumentTexts } from './document-texts.js'
 import { ingestDocumentAuthors } from './document-authors.js'
 
-/** Returns the riksmöten to ingest: current + previous */
+/** Returns the riksmöten to ingest: current + previous, or an explicit override for backfill runs. */
 function getRiksmotenToIngest(): string[] {
+  // Allow explicit override for backfill runs.
+  // Format: comma-separated riksmöten, e.g. "2022/23,2023/24"
+  if (process.env.RIKSMOTEN_OVERRIDE) {
+    return process.env.RIKSMOTEN_OVERRIDE.split(',').map(s => s.trim()).filter(Boolean)
+  }
+  // Default: current and previous riksmöte only.
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1

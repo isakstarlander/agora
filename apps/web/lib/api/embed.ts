@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url)
 const { VoyageAIClient } = require('voyageai') as typeof import('voyageai')
 
 const EMBED_MODEL = 'voyage-4-lite'
-const EMBED_DIM   = 1024
+const EMBED_DIM   = 512
 
 let client: InstanceType<typeof VoyageAIClient> | null = null
 
