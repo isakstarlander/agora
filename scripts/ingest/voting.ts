@@ -1,6 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchRiksdagen, sleep } from './utils.js'
 
+/** Run `fn` over `items` with at most `concurrency` simultaneous executions. */
+async function runConcurrent<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  const iter = items[Symbol.iterator]()
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      for (let next = iter.next(); !next.done; next = iter.next()) {
+        await fn(next.value)
+      }
+    }),
+  )
+}
+
 /**
  * One row returned by voteringlista with gruppering=votering_id.
  *
@@ -141,18 +157,31 @@ export async function ingestVotes(
 
     totalInserted += voteList.length
 
-    // Fetch per-member results for each vote and enrich vote metadata.
-    for (const vote of voteList) {
+    // Pre-check which votes already have results — skip those on re-runs.
+    // Votes never change after being cast, so existing rows are always complete.
+    const voteIds = voteList.map(v => v.votering_id)
+    const processedIds = new Set<string>()
+    const IN_BATCH = 500
+    for (let i = 0; i < voteIds.length; i += IN_BATCH) {
+      const { data: existing, error: existingErr } = await client
+        .from('vote_results')
+        .select('vote_id')
+        .in('vote_id', voteIds.slice(i, i + IN_BATCH))
+      if (existingErr) throw existingErr
+      existing?.forEach(r => processedIds.add(r.vote_id))
+    }
+
+    const unprocessed = voteList.filter(v => !processedIds.has(v.votering_id))
+    console.log(`  rm=${rm}: ${processedIds.size} votes already processed, ${unprocessed.length} to fetch`)
+
+    // Fetch per-member results with bounded concurrency (4 parallel requests).
+    await runConcurrent(unprocessed, 4, async (vote) => {
       try {
-        const resultUrl = `https://data.riksdagen.se/votering/${vote.votering_id}/json`
+        const resultUrl  = `https://data.riksdagen.se/votering/${vote.votering_id}/json`
         const resultData = await fetchRiksdagen<VoteResultResponse>(resultUrl)
         const rawResults = extractVoteResults(resultData)
-        if (rawResults.length === 0) continue
+        if (rawResults.length === 0) return
 
-        // Enrich vote row with metadata from the per-vote document object.
-        // documents are ingested before votes in the same run, so the FK to
-        // documents(id) should hold for same-rm votes. Cross-rm dok_ids are
-        // handled by falling back to skipping document_id on FK error (23503).
         const dok = resultData.votering?.dokument
         if (dok) {
           const meta = {
@@ -166,8 +195,6 @@ export async function ingestVotes(
             .eq('id', vote.votering_id)
           if (updateErr) {
             if (updateErr.code === '23503') {
-              // FK violation: dok_id not in documents table (cross-rm reference).
-              // Retry without document_id so date/description are still saved.
               const { error: retryErr } = await client
                 .from('votes')
                 .update({ date: meta.date, description: meta.description })
@@ -179,11 +206,7 @@ export async function ingestVotes(
           }
         }
 
-        // Deduplicate by (vote_id, member_id) — the API occasionally returns
-        // duplicate entries for the same member in a single vote response.
-        // Skip items without intressent_id — alternate shape may use banknummer
-        // instead; those cannot be joined to members table.
-        const seen = new Set<string>()
+        const seen       = new Set<string>()
         const resultRows = rawResults
           .filter(r => {
             if (!r.intressent_id) return false
@@ -202,13 +225,12 @@ export async function ingestVotes(
         await client
           .from('vote_results')
           .upsert(resultRows, { onConflict: 'vote_id,member_id', ignoreDuplicates: true })
+
         await sleep(200)
       } catch (err) {
         console.warn(`  Failed to fetch results for vote ${vote.votering_id}:`, err)
       }
-    }
-
-    await sleep(200)
+    })
   }
 
   return { inserted: totalInserted, updated: 0 }

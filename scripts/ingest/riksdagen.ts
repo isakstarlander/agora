@@ -1,4 +1,4 @@
-import { getSupabaseClient, startIngestionRun, finishIngestionRun, sleep } from './utils.js'
+import { getSupabaseClient, startIngestionRun, finishIngestionRun } from './utils.js'
 import { ingestMembers } from './members.js'
 import { ingestDocuments } from './documents.js'
 import { ingestVotes } from './voting.js'
@@ -39,32 +39,27 @@ async function main() {
     const memberCounts = await ingestMembers(client)
     totalProcessed += memberCounts.inserted + memberCounts.updated
     totalUpdated   += memberCounts.updated
-    await sleep(2000)
 
     console.log('Ingesting documents...')
     const docCounts = await ingestDocuments(client, rms)
     totalProcessed += docCounts.inserted + docCounts.updated
     totalInserted  += docCounts.inserted
     totalUpdated   += docCounts.updated
-    await sleep(2000)
 
     console.log('Ingesting votes...')
     const voteCounts = await ingestVotes(client, rms)
     totalProcessed += voteCounts.inserted + voteCounts.updated
     totalInserted  += voteCounts.inserted
-    await sleep(2000)
 
     console.log('Fetching document text bodies...')
-    const textCounts = await ingestDocumentTexts(client)
+    const textCounts = await ingestDocumentTexts(client, rms)
     totalProcessed += textCounts.inserted + textCounts.skipped
     totalInserted  += textCounts.inserted
-    await sleep(2000)
 
     console.log('Fetching document authors...')
-    const authorCounts = await ingestDocumentAuthors(client)
+    const authorCounts = await ingestDocumentAuthors(client, rms)
     totalProcessed += authorCounts.inserted + authorCounts.skipped
     totalInserted  += authorCounts.inserted
-    await sleep(2000)
 
     console.log(`Ingestion complete. Processed: ${totalProcessed}`)
   } catch (err) {
