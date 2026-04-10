@@ -1,10 +1,14 @@
 import { NextRequest } from 'next/server'
 import { apiRoute } from '@/lib/api/handler'
-import { paginated } from '@/lib/api/response'
+import { paginated, err } from '@/lib/api/response'
 import { parsePagination, paginate } from '@/lib/api/pagination'
 import { createClient } from '@/lib/supabase/server'
+import { requireApiKey } from '@/lib/api/auth'
 
 export const GET = apiRoute(async (req: NextRequest, ctx) => {
+  const auth = await requireApiKey(req)
+  if (!auth.ok) return err('UNAUTHORIZED', auth.message, auth.status)
+
   const party = (await ctx.params).party as string
   const sp        = req.nextUrl.searchParams
   const pg        = parsePagination(sp)

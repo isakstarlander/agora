@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi'
 import { apiRoute } from '@/lib/api/handler'
-import { paginated } from '@/lib/api/response'
+import { paginated, err } from '@/lib/api/response'
 import { parsePagination, paginate } from '@/lib/api/pagination'
 import { createClient } from '@/lib/supabase/server'
 import { registry } from '@/lib/api/openapi/registry'
+import { requireApiKey } from '@/lib/api/auth'
 
 extendZodWithOpenApi(z)
 
@@ -37,6 +38,9 @@ registry.registerPath({
 })
 
 export const GET = apiRoute(async (req: NextRequest) => {
+  const auth = await requireApiKey(req)
+  if (!auth.ok) return err('UNAUTHORIZED', auth.message, auth.status)
+
   const sp       = req.nextUrl.searchParams
   const pg       = parsePagination(sp)
   const { from, to } = paginate(pg)

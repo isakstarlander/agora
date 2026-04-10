@@ -1,8 +1,13 @@
+import { NextRequest } from 'next/server'
 import { apiRoute } from '@/lib/api/handler'
-import { ok } from '@/lib/api/response'
+import { ok, err } from '@/lib/api/response'
 import { createClient } from '@/lib/supabase/server'
+import { requireApiKey } from '@/lib/api/auth'
 
-export const GET = apiRoute(async () => {
+export const GET = apiRoute(async (req: NextRequest) => {
+  const auth = await requireApiKey(req)
+  if (!auth.ok) return err('UNAUTHORIZED', auth.message, auth.status)
+
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('budget_outcomes')

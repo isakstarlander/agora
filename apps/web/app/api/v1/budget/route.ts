@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { apiRoute } from '@/lib/api/handler'
-import { paginated, badRequest } from '@/lib/api/response'
+import { paginated, badRequest, err } from '@/lib/api/response'
 import { parsePagination, paginate } from '@/lib/api/pagination'
 import { createClient } from '@/lib/supabase/server'
+import { requireApiKey } from '@/lib/api/auth'
 
 const BudgetQuerySchema = z.object({
   year:                  z.coerce.number().int().min(2000).max(2100).optional(),
@@ -12,6 +13,9 @@ const BudgetQuerySchema = z.object({
 })
 
 export const GET = apiRoute(async (req: NextRequest) => {
+  const auth = await requireApiKey(req)
+  if (!auth.ok) return err('UNAUTHORIZED', auth.message, auth.status)
+
   const sp     = req.nextUrl.searchParams
   const parsed = BudgetQuerySchema.safeParse(Object.fromEntries(sp))
   if (!parsed.success) return badRequest(parsed.error.issues[0]?.message ?? 'Invalid params')
