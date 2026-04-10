@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          description: string | null
+          email: string
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          rate_limit_rpm: number
+          request_count: number
+          tier: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          rate_limit_rpm?: number
+          request_count?: number
+          tier?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          rate_limit_rpm?: number
+          request_count?: number
+          tier?: string
+        }
+        Relationships: []
+      }
       api_usage_log: {
         Row: {
           created_at: string

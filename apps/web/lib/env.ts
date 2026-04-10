@@ -7,7 +7,10 @@ export const env = createEnv({
     ANTHROPIC_API_KEY:          z.string().min(1),
     UPSTASH_REDIS_REST_URL:     z.url(),
     UPSTASH_REDIS_REST_TOKEN:   z.string().min(1),
-    AGORA_INTERNAL_API_KEY:     z.string().startsWith('agora_'),
+    AGORA_INTERNAL_API_KEY:     z.preprocess(
+      v => (v === '' ? undefined : v),
+      z.string().startsWith('agora_').optional(),
+    ),
     MANIFESTO_API_KEY:          z.string().optional(),
     DEEPL_API_KEY:              z.string().optional(),
     SENTRY_AUTH_TOKEN:          z.string().optional(),
