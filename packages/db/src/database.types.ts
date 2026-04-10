@@ -570,6 +570,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      match_manifesto_statements: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          category_code: string
+          category_name: string
+          id: number
+          manifesto_id: number
+          position: number
+          similarity: number
+          statement_index: number
+          text: string
+        }[]
+      }
       search_documents: {
         Args: {
           doc_rm?: string
