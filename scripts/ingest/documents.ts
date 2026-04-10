@@ -4,14 +4,6 @@ import { fetchRiksdagen, sleep } from './utils.js'
 const DOCUMENT_TYPES = ['mot', 'prop', 'bet', 'ip', 'fr'] as const
 const PAGE_SIZE = 100
 
-interface RiksdagenIntressent {
-  intressent_id: string
-  namn: string
-  partibet: string
-  ordning: string
-  roll: string
-}
-
 interface RiksdagenDokument {
   id: string
   typ: string
@@ -24,7 +16,6 @@ interface RiksdagenDokument {
   organ?: string
   dokument_url_html?: string
   relaterat_id?: string
-  intressent?: { intressent: RiksdagenIntressent | RiksdagenIntressent[] }
 }
 
 interface DokumentListaResponse {
@@ -85,24 +76,6 @@ export async function ingestDocuments(
         if (error) throw error
 
         totalInserted += docs.length
-
-        // Upsert authors
-        const authorRows: { document_id: string; member_id: string }[] = []
-        for (const d of docs) {
-          if (!d.intressent) continue
-          const raw = d.intressent.intressent
-          const persons = Array.isArray(raw) ? raw : [raw]
-          for (const p of persons) {
-            if (p.intressent_id && p.roll?.toLowerCase() === 'undertecknare') {
-              authorRows.push({ document_id: d.id, member_id: p.intressent_id })
-            }
-          }
-        }
-        if (authorRows.length > 0) {
-          await client
-            .from('document_authors')
-            .upsert(authorRows, { onConflict: 'document_id,member_id', ignoreDuplicates: true })
-        }
 
         const totalPages = parseInt(lista['@sidor'] ?? '1', 10)
         hasMore = page < totalPages

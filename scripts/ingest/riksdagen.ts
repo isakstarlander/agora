@@ -3,6 +3,7 @@ import { ingestMembers } from './members.js'
 import { ingestDocuments } from './documents.js'
 import { ingestVotes } from './voting.js'
 import { ingestDocumentTexts } from './document-texts.js'
+import { ingestDocumentAuthors } from './document-authors.js'
 
 /** Returns the riksmöten to ingest: current + previous */
 function getRiksmotenToIngest(): string[] {
@@ -51,6 +52,12 @@ async function main() {
     const textCounts = await ingestDocumentTexts(client)
     totalProcessed += textCounts.inserted + textCounts.skipped
     totalInserted  += textCounts.inserted
+    await sleep(2000)
+
+    console.log('Fetching document authors...')
+    const authorCounts = await ingestDocumentAuthors(client)
+    totalProcessed += authorCounts.inserted + authorCounts.skipped
+    totalInserted  += authorCounts.inserted
     await sleep(2000)
 
     console.log(`Ingestion complete. Processed: ${totalProcessed}`)
