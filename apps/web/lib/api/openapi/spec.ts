@@ -43,6 +43,7 @@ registry.registerPath({
   method: 'get', path: '/members/{id}/votes',
   summary: "Member's voting record",
   tags: ['Members'],
+  security: [{ BearerAuth: [] }],
   request: {
     params: z.object({ id: z.string() }),
     query:  z.object({ page: z.coerce.number().optional(), per_page: z.coerce.number().optional() }),
@@ -54,6 +55,7 @@ registry.registerPath({
   method: 'get', path: '/members/{id}/documents',
   summary: 'Documents authored by member',
   tags: ['Members'],
+  security: [{ BearerAuth: [] }],
   request: { params: z.object({ id: z.string() }), query: z.object({ page: z.coerce.number().optional() }) },
   responses: { 200: { description: 'Paginated document list' } },
 })
@@ -63,6 +65,7 @@ registry.registerPath({
   method: 'get', path: '/documents',
   summary: 'List parliamentary documents',
   tags: ['Documents'],
+  security: [{ BearerAuth: [] }],
   request: { query: z.object({
     type:      z.enum(['mot', 'prop', 'bet', 'ip', 'fr', 'prot', 'SFS']).optional().openapi({ description: 'Document type' }),
     rm:        z.string().optional().openapi({ description: 'Riksmöte e.g. 2024/25' }),
@@ -87,6 +90,7 @@ registry.registerPath({
   method: 'get', path: '/votes',
   summary: 'List votes (voteringar)',
   tags: ['Votes'],
+  security: [{ BearerAuth: [] }],
   request: { query: z.object({
     rm:       z.string().optional(),
     page:     z.coerce.number().optional(),
@@ -108,6 +112,7 @@ registry.registerPath({
   method: 'get', path: '/budget',
   summary: 'ESV budget outcomes',
   tags: ['Budget'],
+  security: [{ BearerAuth: [] }],
   request: { query: z.object({
     year:                  z.coerce.number().optional().openapi({ description: 'Calendar year e.g. 2024' }),
     expenditure_area_code: z.string().optional().openapi({ description: '2-digit area code e.g. 16' }),
@@ -146,6 +151,7 @@ registry.registerPath({
   method: 'get', path: '/search',
   summary: 'Hybrid full-text + semantic document search',
   tags: ['Search'],
+  security: [{ BearerAuth: [] }],
   request: { query: z.object({
     q:     z.string().openapi({ description: 'Search query (min 2 chars)' }),
     type:  z.string().optional(),

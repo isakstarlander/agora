@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      accountability_cache: {
+        Row: {
+          generated_at: string
+          party: string
+          summary: string | null
+          topic_hash: string
+          topic_raw: string
+        }
+        Insert: {
+          generated_at?: string
+          party: string
+          summary?: string | null
+          topic_hash: string
+          topic_raw: string
+        }
+        Update: {
+          generated_at?: string
+          party?: string
+          summary?: string | null
+          topic_hash?: string
+          topic_raw?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
