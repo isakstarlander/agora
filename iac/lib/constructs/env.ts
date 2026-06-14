@@ -1,5 +1,13 @@
 import * as cdk from "aws-cdk-lib";
 
+export function currentRm(today = new Date()): string {
+  const y = today.getUTCFullYear();
+  const m = today.getUTCMonth() + 1;
+  const start = m >= 9 ? y : y - 1;
+  const end = (start + 1) % 100;
+  return `${start}/${String(end).padStart(2, "0")}`;
+}
+
 export interface AgoraContext {
   env: string;
   region: string;

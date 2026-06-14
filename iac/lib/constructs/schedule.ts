@@ -10,13 +10,15 @@ export interface LambdaScheduleProps {
   target: lambda.IFunction;
   /** Input payload forwarded to the Lambda; defaults to empty object */
   input?: string;
+  /** EventBridge Scheduler group name; defaults to default group */
+  groupName?: string;
 }
 
 export class LambdaSchedule extends Construct {
   constructor(scope: Construct, id: string, props: LambdaScheduleProps) {
     super(scope, id);
 
-    const { scheduleName, cronExpression, target, input = "{}" } = props;
+    const { scheduleName, cronExpression, target, input = "{}", groupName } = props;
 
     const role = new iam.Role(this, "InvokeRole", {
       assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
@@ -30,6 +32,7 @@ export class LambdaSchedule extends Construct {
 
     new scheduler.CfnSchedule(this, "Schedule", {
       name: scheduleName,
+      groupName,
       scheduleExpression: cronExpression,
       flexibleTimeWindow: { mode: "OFF" },
       target: {

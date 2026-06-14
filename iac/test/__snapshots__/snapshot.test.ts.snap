@@ -422,6 +422,258 @@ def sort_filter_rules(json_obj):
       },
       "Type": "AWS::IAM::Role",
     },
+    "FetchRiksDocumentsFnBED9DF3C": {
+      "DependsOn": [
+        "IngestRoleDefaultPolicy36CB560D",
+        "IngestRoleAF8AE6D8",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "d0afcdd3f06affeb58b2c603270a1dd94d084feb1e55e3542c9fab860c6e2b7b.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "CURSOR_TABLE": {
+              "Ref": "IngestCursorsTable29E1E451",
+            },
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fetch-riks-documents",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestRoleAF8AE6D8",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FetchRiksDocumentsFnLogRetentionF251730E": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FetchRiksDocumentsFnBED9DF3C",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FetchRiksMembersFn2EE2FAFC": {
+      "DependsOn": [
+        "IngestRoleDefaultPolicy36CB560D",
+        "IngestRoleAF8AE6D8",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "f0233f8a1bdda352c3b0674d753b65622e7524c6d7ed7f089702ae196610c9fe.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "CURSOR_TABLE": {
+              "Ref": "IngestCursorsTable29E1E451",
+            },
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fetch-riks-members",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestRoleAF8AE6D8",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FetchRiksMembersFnLogRetention5F8E1955": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FetchRiksMembersFn2EE2FAFC",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FetchRiksSpeechesFn7F27C5B3": {
+      "DependsOn": [
+        "IngestRoleDefaultPolicy36CB560D",
+        "IngestRoleAF8AE6D8",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "19098d825337a75c5826b217b6a4cf099f7a21d1bbb37b144df9ec79f450c9b8.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "CURSOR_TABLE": {
+              "Ref": "IngestCursorsTable29E1E451",
+            },
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fetch-riks-speeches",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestRoleAF8AE6D8",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FetchRiksSpeechesFnLogRetention804F569F": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FetchRiksSpeechesFn7F27C5B3",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FetchRiksVotesFnC3C8FA4E": {
+      "DependsOn": [
+        "IngestRoleDefaultPolicy36CB560D",
+        "IngestRoleAF8AE6D8",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "81c6b1a8a358b053ff5a9a2c800e713076cb4f5c9631d981398276653d9e2782.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "CURSOR_TABLE": {
+              "Ref": "IngestCursorsTable29E1E451",
+            },
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fetch-riks-votes",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestRoleAF8AE6D8",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FetchRiksVotesFnLogRetention66146BFD": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FetchRiksVotesFnC3C8FA4E",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
     "GlueDatabase": {
       "Properties": {
         "CatalogId": "111111111111",
@@ -454,6 +706,146 @@ def sort_filter_rules(json_obj):
       },
       "Type": "AWS::DynamoDB::Table",
       "UpdateReplacePolicy": "Retain",
+    },
+    "IngestRoleAF8AE6D8": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "IngestRoleDefaultPolicy36CB560D": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RawBucket0C3EE094",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "RawBucket0C3EE094",
+                          "Arn",
+                        ],
+                      },
+                      "/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "IngestCursorsTable29E1E451",
+                    "Arn",
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "IngestCursorsTable29E1E451",
+                    "Arn",
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "IngestionRunsTableCFCC4EFD",
+                    "Arn",
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "IngestRoleDefaultPolicy36CB560D",
+        "Roles": [
+          {
+            "Ref": "IngestRoleAF8AE6D8",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
     },
     "IngestionRunsTableCFCC4EFD": {
       "DeletionPolicy": "Delete",
@@ -490,6 +882,83 @@ def sort_filter_rules(json_obj):
       },
       "Type": "AWS::DynamoDB::Table",
       "UpdateReplacePolicy": "Delete",
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A": {
+      "DependsOn": [
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+      ],
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip",
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs24.x",
+        "Timeout": 900,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:PutRetentionPolicy",
+                "logs:DeleteRetentionPolicy",
+              ],
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "Roles": [
+          {
+            "Ref": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
     },
     "LogsBucket9C4D8843": {
       "DeletionPolicy": "Delete",
@@ -838,6 +1307,627 @@ def sort_filter_rules(json_obj):
         ],
       },
       "Type": "AWS::SNS::TopicPolicy",
+    },
+    "RiksDocumentsBetInvokeRoleA0429D6F": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsBetInvokeRoleDefaultPolicyF4E81C46": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsBetInvokeRoleDefaultPolicyF4E81C46",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsBetInvokeRoleA0429D6F",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsBetScheduleCCF0AC30": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-bet",
+        "ScheduleExpression": "cron(25 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"bet"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsBetInvokeRoleA0429D6F",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksDocumentsFrInvokeRoleC320A5B6": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsFrInvokeRoleDefaultPolicyA3E351EB": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsFrInvokeRoleDefaultPolicyA3E351EB",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsFrInvokeRoleC320A5B6",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsFrSchedule720F4BBC": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-fr",
+        "ScheduleExpression": "cron(31 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"fr"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsFrInvokeRoleC320A5B6",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksDocumentsIpInvokeRoleDefaultPolicyBF2F024C": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsIpInvokeRoleDefaultPolicyBF2F024C",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsIpInvokeRoleF5B0A29A",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsIpInvokeRoleF5B0A29A": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsIpSchedule92AAFA0F": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-ip",
+        "ScheduleExpression": "cron(29 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"ip"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsIpInvokeRoleF5B0A29A",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksDocumentsMotInvokeRole2A366E88": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsMotInvokeRoleDefaultPolicyC235FDC8": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsMotInvokeRoleDefaultPolicyC235FDC8",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsMotInvokeRole2A366E88",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsMotSchedule36B10309": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-mot",
+        "ScheduleExpression": "cron(15 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"mot"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsMotInvokeRole2A366E88",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksDocumentsPropInvokeRole8860DB0F": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsPropInvokeRoleDefaultPolicy6CBC318A": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsPropInvokeRoleDefaultPolicy6CBC318A",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsPropInvokeRole8860DB0F",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsPropSchedule47E5CCBC": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-prop",
+        "ScheduleExpression": "cron(20 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"prop"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsPropInvokeRole8860DB0F",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksDocumentsSkrInvokeRole82EEDCE9": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksDocumentsSkrInvokeRoleDefaultPolicyF20B4FD3": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksDocumentsFnBED9DF3C",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksDocumentsSkrInvokeRoleDefaultPolicyF20B4FD3",
+        "Roles": [
+          {
+            "Ref": "RiksDocumentsSkrInvokeRole82EEDCE9",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksDocumentsSkrSchedule40920E2C": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-documents-skr",
+        "ScheduleExpression": "cron(27 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksDocumentsFnBED9DF3C",
+              "Arn",
+            ],
+          },
+          "Input": "{"doktyp":"skr"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksDocumentsSkrInvokeRole82EEDCE9",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksMembersInvokeRole56EDE604": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksMembersInvokeRoleDefaultPolicy4721B153": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksMembersFn2EE2FAFC",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksMembersInvokeRoleDefaultPolicy4721B153",
+        "Roles": [
+          {
+            "Ref": "RiksMembersInvokeRole56EDE604",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksMembersScheduleBC315E5D": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-members",
+        "ScheduleExpression": "cron(0 3 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksMembersFn2EE2FAFC",
+              "Arn",
+            ],
+          },
+          "Input": "{}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksMembersInvokeRole56EDE604",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksSpeecheesInvokeRoleA1AE1877": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksSpeecheesInvokeRoleDefaultPolicyD0FFAE44": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksSpeechesFn7F27C5B3",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksSpeecheesInvokeRoleDefaultPolicyD0FFAE44",
+        "Roles": [
+          {
+            "Ref": "RiksSpeecheesInvokeRoleA1AE1877",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksSpeecheesSchedule26021AF9": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-speechees",
+        "ScheduleExpression": "cron(45 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksSpeechesFn7F27C5B3",
+              "Arn",
+            ],
+          },
+          "Input": "{"rm":"2025/26"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksSpeecheesInvokeRoleA1AE1877",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
+    },
+    "RiksVotesInvokeRole39619C74": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "scheduler.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RiksVotesInvokeRoleDefaultPolicy7EFFE21E": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FetchRiksVotesFnC3C8FA4E",
+                  "Arn",
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RiksVotesInvokeRoleDefaultPolicy7EFFE21E",
+        "Roles": [
+          {
+            "Ref": "RiksVotesInvokeRole39619C74",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RiksVotesSchedule52159D9D": {
+      "Properties": {
+        "FlexibleTimeWindow": {
+          "Mode": "OFF",
+        },
+        "GroupName": "agora-schedules",
+        "Name": "agora-ingest-riks-votes",
+        "ScheduleExpression": "cron(40 6 * * ? *)",
+        "Target": {
+          "Arn": {
+            "Fn::GetAtt": [
+              "FetchRiksVotesFnC3C8FA4E",
+              "Arn",
+            ],
+          },
+          "Input": "{"rm":"2025/26"}",
+          "RoleArn": {
+            "Fn::GetAtt": [
+              "RiksVotesInvokeRole39619C74",
+              "Arn",
+            ],
+          },
+        },
+      },
+      "Type": "AWS::Scheduler::Schedule",
     },
     "ScheduleGroup": {
       "Properties": {

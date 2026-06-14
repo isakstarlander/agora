@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
@@ -5,10 +6,14 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as glue from "aws-cdk-lib/aws-glue";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as scheduler from "aws-cdk-lib/aws-scheduler";
 import { Construct } from "constructs";
 import { AgoraStackProps } from "./stack-props";
 import { EmptySecret } from "./constructs/secret";
+import { NodeLambda } from "./constructs/node-lambda";
+import { LambdaSchedule } from "./constructs/schedule";
+import { currentRm } from "./constructs/env";
 
 export class AgoraDataStack extends cdk.Stack {
   public readonly rawBucket: s3.Bucket;
@@ -192,6 +197,78 @@ export class AgoraDataStack extends cdk.Stack {
         }),
       ],
     });
+
+    // --- Riksdagen ingestion Lambdas (PR-03) ---
+
+    const ingestRole = new iam.Role(this, "IngestRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+        this.baseLambdaPolicy,
+      ],
+    });
+    this.rawBucket.grantWrite(ingestRole);
+    this.ingestCursorsTable.grantReadWriteData(ingestRole);
+    this.ingestionRunsTable.grantWriteData(ingestRole);
+
+    const handlerEntry = (name: string) =>
+      path.join(
+        __dirname,
+        `../lambda/fetch-riks/src/handlers/${name}.ts`
+      );
+
+    const ingestEnv = {
+      RAW_BUCKET: this.rawBucket.bucketName,
+      CURSOR_TABLE: this.ingestCursorsTable.tableName,
+      RUNS_TABLE: this.ingestionRunsTable.tableName,
+    };
+
+    const ingestFn = (id: string, entry: string): lambda.IFunction =>
+      new NodeLambda(this, id, {
+        functionName: `agora-${id
+          .replace(/([A-Z])/g, "-$1")
+          .toLowerCase()
+          .replace(/^-/, "")}`,
+        entry: handlerEntry(entry),
+        role: ingestRole,
+        timeout: cdk.Duration.minutes(5),
+        environment: ingestEnv,
+      }).fn;
+
+    const fnDocs = ingestFn("FetchRiksDocuments", "documents");
+    const fnVotes = ingestFn("FetchRiksVotes", "votes");
+    const fnSpeeches = ingestFn("FetchRiksSpeeches", "speeches");
+    const fnMembers = ingestFn("FetchRiksMembers", "members");
+
+    const sched = (
+      id: string,
+      cron: string,
+      target: lambda.IFunction,
+      input: object
+    ) =>
+      new LambdaSchedule(this, id, {
+        scheduleName: `agora-ingest-${id
+          .replace(/([A-Z])/g, "-$1")
+          .toLowerCase()
+          .replace(/^-/, "")}`,
+        cronExpression: cron,
+        target,
+        input: JSON.stringify(input),
+        groupName: "agora-schedules",
+      });
+
+    const rm = currentRm();
+    sched("RiksDocumentsMot", "cron(15 6 * * ? *)", fnDocs, { doktyp: "mot" });
+    sched("RiksDocumentsProp", "cron(20 6 * * ? *)", fnDocs, { doktyp: "prop" });
+    sched("RiksDocumentsBet", "cron(25 6 * * ? *)", fnDocs, { doktyp: "bet" });
+    sched("RiksDocumentsSkr", "cron(27 6 * * ? *)", fnDocs, { doktyp: "skr" });
+    sched("RiksDocumentsIp", "cron(29 6 * * ? *)", fnDocs, { doktyp: "ip" });
+    sched("RiksDocumentsFr", "cron(31 6 * * ? *)", fnDocs, { doktyp: "fr" });
+    sched("RiksVotes", "cron(40 6 * * ? *)", fnVotes, { rm });
+    sched("RiksSpeechees", "cron(45 6 * * ? *)", fnSpeeches, { rm });
+    sched("RiksMembers", "cron(0 3 * * ? *)", fnMembers, {});
 
     // --- CloudFormation Outputs ---
 
