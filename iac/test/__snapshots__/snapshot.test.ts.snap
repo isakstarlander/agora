@@ -58,6 +58,11 @@ exports[`DataStack synthesises without error 1`] = `
         "Ref": "AccountabilityJobsTableF8E84554",
       },
     },
+    "FanoutDoctextArn": {
+      "Value": {
+        "Ref": "FanoutDoctext059655F8",
+      },
+    },
     "GlueDatabaseName": {
       "Value": "agora_parquet",
     },
@@ -422,6 +427,365 @@ def sort_filter_rules(json_obj):
       },
       "Type": "AWS::IAM::Role",
     },
+    "FanoutDoctext059655F8": {
+      "DeletionPolicy": "Delete",
+      "DependsOn": [
+        "FanoutDoctextSmRoleDefaultPolicyB84AA012",
+        "FanoutDoctextSmRole675F046A",
+      ],
+      "Properties": {
+        "DefinitionString": {
+          "Fn::Join": [
+            "",
+            [
+              "{"StartAt":"ListNewDocs","States":{"ListNewDocs":{"Next":"FanoutMap","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":"$","ResultSelector":{"docs.$":"$.Payload.docs","run_id.$":"$.Payload.run_id","started_at.$":"$.Payload.started_at","ingested.$":"$.Payload.ingested"},"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnListNewDocs574E02B7",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"FanoutMap":{"Type":"Map","ResultPath":"$.map_results","Next":"Summarise","ItemsPath":"$.docs","ItemSelector":{"dok_id.$":"$$.Map.Item.Value.dok_id","doktyp.$":"$$.Map.Item.Value.doktyp","ingested.$":"$.ingested"},"ItemProcessor":{"ProcessorConfig":{"Mode":"INLINE"},"StartAt":"FetchDetail","States":{"FetchDetail":{"Next":"IsMot","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":"$.detail","Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnFetchDetailFn558CB252",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"IsMot":{"Type":"Choice","Choices":[{"Variable":"$.doktyp","StringEquals":"mot","Next":"WriteAuthors"}],"Default":"FetchBodyOther"},"FetchBodyOther":{"Next":"WriteAliasIndexOther","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnFetchBodyFnFB08508C",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"WriteAliasIndexOther":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnWriteAliasIndex590039B5",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"WriteAuthors":{"Next":"FetchBodyMot","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnWriteAuthors69A46351",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"FetchBodyMot":{"Next":"WriteAliasIndexMot","Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnFetchBodyFnFB08508C",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}},"WriteAliasIndexMot":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnWriteAliasIndex590039B5",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}}}},"MaxConcurrency":10},"Summarise":{"End":true,"Retry":[{"ErrorEquals":["Lambda.ClientExecutionTimeoutException","Lambda.ServiceException","Lambda.AWSLambdaException","Lambda.SdkClientException"],"IntervalSeconds":2,"MaxAttempts":6,"BackoffRate":2}],"Type":"Task","ResultPath":null,"Resource":"arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":states:::lambda:invoke","Parameters":{"FunctionName":"",
+              {
+                "Fn::GetAtt": [
+                  "FnSummarise31B0605F",
+                  "Arn",
+                ],
+              },
+              "","Payload.$":"$"}}}}",
+            ],
+          ],
+        },
+        "LoggingConfiguration": {
+          "Destinations": [
+            {
+              "CloudWatchLogsLogGroup": {
+                "LogGroupArn": {
+                  "Fn::GetAtt": [
+                    "FanoutDoctextLogs10CB9590",
+                    "Arn",
+                  ],
+                },
+              },
+            },
+          ],
+          "IncludeExecutionData": true,
+          "Level": "ALL",
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "FanoutDoctextSmRole675F046A",
+            "Arn",
+          ],
+        },
+        "StateMachineName": "agora-fanout-doctext",
+        "TracingConfiguration": {
+          "Enabled": false,
+        },
+      },
+      "Type": "AWS::StepFunctions::StateMachine",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "FanoutDoctextLogs10CB9590": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "LogGroupName": "/aws/states/agora-fanout-doctext",
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "FanoutDoctextSmRole675F046A": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "states.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "RoleName": "AgoraFanoutDoctextRole",
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "FanoutDoctextSmRoleDefaultPolicyB84AA012": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnListNewDocs574E02B7",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnListNewDocs574E02B7",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnFetchDetailFn558CB252",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnFetchDetailFn558CB252",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnFetchBodyFnFB08508C",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnFetchBodyFnFB08508C",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnWriteAuthors69A46351",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnWriteAuthors69A46351",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnWriteAliasIndex590039B5",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnWriteAliasIndex590039B5",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "FnSummarise31B0605F",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "FnSummarise31B0605F",
+                          "Arn",
+                        ],
+                      },
+                      ":*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "FanoutDoctextLogs10CB9590",
+                  "Arn",
+                ],
+              },
+            },
+            {
+              "Action": [
+                "logs:CreateLogDelivery",
+                "logs:GetLogDelivery",
+                "logs:UpdateLogDelivery",
+                "logs:DeleteLogDelivery",
+                "logs:ListLogDeliveries",
+                "logs:PutResourcePolicy",
+                "logs:DescribeResourcePolicies",
+                "logs:DescribeLogGroups",
+              ],
+              "Effect": "Allow",
+              "Resource": "*",
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "FanoutDoctextSmRoleDefaultPolicyB84AA012",
+        "Roles": [
+          {
+            "Ref": "FanoutDoctextSmRole675F046A",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "FetchRiksDocumentsFnBED9DF3C": {
       "DependsOn": [
         "IngestRoleDefaultPolicy36CB560D",
@@ -660,6 +1024,360 @@ def sort_filter_rules(json_obj):
               "/aws/lambda/",
               {
                 "Ref": "FetchRiksVotesFnC3C8FA4E",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnFetchBodyFnFB08508C": {
+      "DependsOn": [
+        "RoleFetchBodyDefaultPolicyFEAA5360",
+        "RoleFetchBody90995502",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "314ee3c8322746128e878515524cab72e0ef8db6acbc6de1d24860ea0213028f.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-fetch-body",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleFetchBody90995502",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnFetchBodyFnLogRetentionA3FB64AF": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnFetchBodyFnFB08508C",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnFetchDetailFn558CB252": {
+      "DependsOn": [
+        "RoleFetchDetailDefaultPolicyFA7E32FD",
+        "RoleFetchDetailC2DE1CE7",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "7b9862c334b0623c7df2e4df4e5aff90372e716e446f6dca51cf0a9dc24ff70e.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-fetch-detail",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleFetchDetailC2DE1CE7",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnFetchDetailFnLogRetention11E5D0EF": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnFetchDetailFn558CB252",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnListNewDocs574E02B7": {
+      "DependsOn": [
+        "RoleListNewDocsDefaultPolicy1499DB8F",
+        "RoleListNewDocsF222E88D",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "153912530154c4303bd0319d264eb8d99e1e3a520dc9d8b033ea7a82edffa5f9.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-list-new-docs",
+        "Handler": "list_new_docs.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleListNewDocsF222E88D",
+            "Arn",
+          ],
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnListNewDocsLogRetention682B79F3": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnListNewDocs574E02B7",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnSummarise31B0605F": {
+      "DependsOn": [
+        "RoleSummariseDefaultPolicy0E23748A",
+        "RoleSummariseACB08E4B",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "153912530154c4303bd0319d264eb8d99e1e3a520dc9d8b033ea7a82edffa5f9.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-summarise",
+        "Handler": "summarise.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleSummariseACB08E4B",
+            "Arn",
+          ],
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnSummariseLogRetention80A42442": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnSummarise31B0605F",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnWriteAliasIndex590039B5": {
+      "DependsOn": [
+        "RoleWriteAliasIndexDefaultPolicy611AC3A1",
+        "RoleWriteAliasIndex2F284A2F",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "153912530154c4303bd0319d264eb8d99e1e3a520dc9d8b033ea7a82edffa5f9.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-write-alias-index",
+        "Handler": "write_alias_index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleWriteAliasIndex2F284A2F",
+            "Arn",
+          ],
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnWriteAliasIndexLogRetention665D8C67": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnWriteAliasIndex590039B5",
+              },
+            ],
+          ],
+        },
+        "RetentionInDays": 30,
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "Custom::LogRetention",
+    },
+    "FnWriteAuthors69A46351": {
+      "DependsOn": [
+        "RoleWriteAuthorsDefaultPolicyC8B74F74",
+        "RoleWriteAuthorsCB219F5F",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-111111111111-eu-north-1",
+          "S3Key": "153912530154c4303bd0319d264eb8d99e1e3a520dc9d8b033ea7a82edffa5f9.zip",
+        },
+        "Environment": {
+          "Variables": {
+            "RAW_BUCKET": {
+              "Ref": "RawBucket0C3EE094",
+            },
+            "RUNS_TABLE": {
+              "Ref": "IngestionRunsTableCFCC4EFD",
+            },
+          },
+        },
+        "FunctionName": "agora-fanout-write-authors",
+        "Handler": "write_authors.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "RoleWriteAuthorsCB219F5F",
+            "Arn",
+          ],
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "FnWriteAuthorsLogRetention433FAFC2": {
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "FnWriteAuthors69A46351",
               },
             ],
           ],
@@ -1928,6 +2646,526 @@ def sort_filter_rules(json_obj):
         },
       },
       "Type": "AWS::Scheduler::Schedule",
+    },
+    "RoleFetchBody90995502": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleFetchBodyDefaultPolicyFEAA5360": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "RawBucket0C3EE094",
+                        "Arn",
+                      ],
+                    },
+                    "/riks/document-text/*",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleFetchBodyDefaultPolicyFEAA5360",
+        "Roles": [
+          {
+            "Ref": "RoleFetchBody90995502",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RoleFetchDetailC2DE1CE7": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleFetchDetailDefaultPolicyFA7E32FD": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "RawBucket0C3EE094",
+                        "Arn",
+                      ],
+                    },
+                    "/riks/dokument-detail/*",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleFetchDetailDefaultPolicyFA7E32FD",
+        "Roles": [
+          {
+            "Ref": "RoleFetchDetailC2DE1CE7",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RoleListNewDocsDefaultPolicy1499DB8F": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RawBucket0C3EE094",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "RawBucket0C3EE094",
+                          "Arn",
+                        ],
+                      },
+                      "/riks/dokumentlista/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RawBucket0C3EE094",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "RawBucket0C3EE094",
+                          "Arn",
+                        ],
+                      },
+                      "/riks/dokument-detail/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleListNewDocsDefaultPolicy1499DB8F",
+        "Roles": [
+          {
+            "Ref": "RoleListNewDocsF222E88D",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RoleListNewDocsF222E88D": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleSummariseACB08E4B": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleSummariseDefaultPolicy0E23748A": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "IngestionRunsTableCFCC4EFD",
+                    "Arn",
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleSummariseDefaultPolicy0E23748A",
+        "Roles": [
+          {
+            "Ref": "RoleSummariseACB08E4B",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RoleWriteAliasIndex2F284A2F": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleWriteAliasIndexDefaultPolicy611AC3A1": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RawBucket0C3EE094",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "RawBucket0C3EE094",
+                          "Arn",
+                        ],
+                      },
+                      "/riks/alias-index/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleWriteAliasIndexDefaultPolicy611AC3A1",
+        "Roles": [
+          {
+            "Ref": "RoleWriteAliasIndex2F284A2F",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RoleWriteAuthorsCB219F5F": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+          {
+            "Ref": "BaseLambdaPolicy9A23B891",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RoleWriteAuthorsDefaultPolicyC8B74F74": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "RawBucket0C3EE094",
+                    "Arn",
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "RawBucket0C3EE094",
+                          "Arn",
+                        ],
+                      },
+                      "/riks/dokument-detail/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging",
+                "s3:Abort*",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "RawBucket0C3EE094",
+                        "Arn",
+                      ],
+                    },
+                    "/riks/dokument-authors/*",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RoleWriteAuthorsDefaultPolicyC8B74F74",
+        "Roles": [
+          {
+            "Ref": "RoleWriteAuthorsCB219F5F",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
     },
     "ScheduleGroup": {
       "Properties": {

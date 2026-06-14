@@ -7,7 +7,10 @@ import * as glue from "aws-cdk-lib/aws-glue";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as scheduler from "aws-cdk-lib/aws-scheduler";
+import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
 import { Construct } from "constructs";
 import { AgoraStackProps } from "./stack-props";
 import { EmptySecret } from "./constructs/secret";
@@ -270,9 +273,206 @@ export class AgoraDataStack extends cdk.Stack {
     sched("RiksSpeechees", "cron(45 6 * * ? *)", fnSpeeches, { rm });
     sched("RiksMembers", "cron(0 3 * * ? *)", fnMembers, {});
 
+    // --- fanout-doctext Step Functions state machine (PR-04) ---
+
+    const fanoutSrc = path.join(__dirname, "../lambda/fanout-doctext/src");
+    const fanoutNodeSrc = (file: string) =>
+      path.join(__dirname, `../lambda/fanout-doctext/src/${file}`);
+
+    const lambdaBaseManagedPolicies = [
+      iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+      this.baseLambdaPolicy,
+    ];
+
+    const mkPyRole = (id: string) =>
+      new iam.Role(this, id, {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        managedPolicies: lambdaBaseManagedPolicies,
+      });
+
+    const roleListNewDocs = mkPyRole("RoleListNewDocs");
+    this.rawBucket.grantRead(roleListNewDocs, "riks/dokumentlista/*");
+    this.rawBucket.grantRead(roleListNewDocs, "riks/dokument-detail/*");
+
+    const roleFetchDetail = mkPyRole("RoleFetchDetail");
+    this.rawBucket.grantPut(roleFetchDetail, "riks/dokument-detail/*");
+
+    const roleFetchBody = mkPyRole("RoleFetchBody");
+    this.rawBucket.grantPut(roleFetchBody, "riks/document-text/*");
+
+    const roleWriteAuthors = mkPyRole("RoleWriteAuthors");
+    this.rawBucket.grantRead(roleWriteAuthors, "riks/dokument-detail/*");
+    this.rawBucket.grantPut(roleWriteAuthors, "riks/dokument-authors/*");
+
+    const roleWriteAliasIndex = mkPyRole("RoleWriteAliasIndex");
+    this.rawBucket.grantReadWrite(roleWriteAliasIndex, "riks/alias-index/*");
+
+    const roleSummarise = mkPyRole("RoleSummarise");
+    this.ingestionRunsTable.grantWriteData(roleSummarise);
+
+    const fanoutEnv = {
+      RAW_BUCKET: this.rawBucket.bucketName,
+      RUNS_TABLE: this.ingestionRunsTable.tableName,
+    };
+
+    const mkPyFn = (
+      id: string,
+      handlerModule: string,
+      role: iam.IRole,
+      extra?: Record<string, string>,
+    ) =>
+      new lambda.Function(this, id, {
+        functionName: `agora-fanout-${handlerModule.replace(/_/g, "-")}`,
+        runtime: lambda.Runtime.PYTHON_3_12,
+        architecture: lambda.Architecture.ARM_64,
+        code: lambda.Code.fromAsset(fanoutSrc),
+        handler: `${handlerModule}.handler`,
+        role,
+        timeout: cdk.Duration.minutes(5),
+        memorySize: 512,
+        logRetention: logs.RetentionDays.ONE_MONTH,
+        environment: { ...fanoutEnv, ...extra },
+      });
+
+    const fnListNewDocs = mkPyFn("FnListNewDocs", "list_new_docs", roleListNewDocs);
+    const fnWriteAuthors = mkPyFn("FnWriteAuthors", "write_authors", roleWriteAuthors);
+    const fnWriteAliasIndex = mkPyFn("FnWriteAliasIndex", "write_alias_index", roleWriteAliasIndex);
+    const fnSummarise = mkPyFn("FnSummarise", "summarise", roleSummarise);
+
+    const fnFetchDetail = new NodeLambda(this, "FnFetchDetail", {
+      functionName: "agora-fanout-fetch-detail",
+      entry: fanoutNodeSrc("fetch_detail.ts"),
+      role: roleFetchDetail,
+      timeout: cdk.Duration.minutes(5),
+      environment: { RAW_BUCKET: this.rawBucket.bucketName },
+    }).fn;
+
+    const fnFetchBody = new NodeLambda(this, "FnFetchBody", {
+      functionName: "agora-fanout-fetch-body",
+      entry: fanoutNodeSrc("fetch_body.ts"),
+      role: roleFetchBody,
+      timeout: cdk.Duration.minutes(5),
+      environment: { RAW_BUCKET: this.rawBucket.bucketName },
+    }).fn;
+
+    // --- State machine steps ---
+
+    const stepListNewDocs = new tasks.LambdaInvoke(this, "ListNewDocs", {
+      lambdaFunction: fnListNewDocs,
+      resultSelector: {
+        "docs.$": "$.Payload.docs",
+        "run_id.$": "$.Payload.run_id",
+        "started_at.$": "$.Payload.started_at",
+        "ingested.$": "$.Payload.ingested",
+      },
+      resultPath: "$",
+    });
+
+    // FetchDetail result goes to $.detail; dok_id/doktyp/ingested stay at $ from itemSelector
+    const stepFetchDetail = new tasks.LambdaInvoke(this, "FetchDetail", {
+      lambdaFunction: fnFetchDetail,
+      resultPath: "$.detail",
+    });
+
+    // Each branch needs its own state instances — CDK does not allow sharing states across branches.
+    const stepWriteAuthors = new tasks.LambdaInvoke(this, "WriteAuthors", {
+      lambdaFunction: fnWriteAuthors,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    const stepFetchBodyMot = new tasks.LambdaInvoke(this, "FetchBodyMot", {
+      lambdaFunction: fnFetchBody,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+    const stepWriteAliasIndexMot = new tasks.LambdaInvoke(this, "WriteAliasIndexMot", {
+      lambdaFunction: fnWriteAliasIndex,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    const stepFetchBodyOther = new tasks.LambdaInvoke(this, "FetchBodyOther", {
+      lambdaFunction: fnFetchBody,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+    const stepWriteAliasIndexOther = new tasks.LambdaInvoke(this, "WriteAliasIndexOther", {
+      lambdaFunction: fnWriteAliasIndex,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    const stepSummarise = new tasks.LambdaInvoke(this, "Summarise", {
+      lambdaFunction: fnSummarise,
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+
+    // mot branch: WriteAuthors → FetchBody → WriteAliasIndex
+    // other branch:              FetchBody → WriteAliasIndex
+    const choiceIsMot = new sfn.Choice(this, "IsMot")
+      .when(
+        sfn.Condition.stringEquals("$.doktyp", "mot"),
+        stepWriteAuthors.next(stepFetchBodyMot).next(stepWriteAliasIndexMot),
+      )
+      .otherwise(stepFetchBodyOther.next(stepWriteAliasIndexOther));
+
+    const perDocChain = stepFetchDetail.next(choiceIsMot);
+
+    const fanoutMap = new sfn.Map(this, "FanoutMap", {
+      maxConcurrency: 10,
+      itemsPath: "$.docs",
+      itemSelector: {
+        "dok_id.$": "$$.Map.Item.Value.dok_id",
+        "doktyp.$": "$$.Map.Item.Value.doktyp",
+        "ingested.$": "$.ingested",
+      },
+      resultPath: "$.map_results",
+    });
+    fanoutMap.itemProcessor(perDocChain);
+
+    const fanoutLogGroup = new logs.LogGroup(this, "FanoutDoctextLogs", {
+      logGroupName: "/aws/states/agora-fanout-doctext",
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const smRole = new iam.Role(this, "FanoutDoctextSmRole", {
+      roleName: "AgoraFanoutDoctextRole",
+      assumedBy: new iam.ServicePrincipal("states.amazonaws.com"),
+    });
+    [fnListNewDocs, fnFetchDetail, fnFetchBody, fnWriteAuthors, fnWriteAliasIndex, fnSummarise]
+      .forEach(fn => fn.grantInvoke(smRole));
+    fanoutLogGroup.grantWrite(smRole);
+    // Step Functions requires additional log delivery permissions not covered by grantWrite
+    smRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        "logs:CreateLogDelivery",
+        "logs:GetLogDelivery",
+        "logs:UpdateLogDelivery",
+        "logs:DeleteLogDelivery",
+        "logs:ListLogDeliveries",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups",
+      ],
+      resources: ["*"],
+    }));
+
+    const fanoutSm = new sfn.StateMachine(this, "FanoutDoctext", {
+      stateMachineName: "agora-fanout-doctext",
+      definitionBody: sfn.DefinitionBody.fromChainable(
+        stepListNewDocs.next(fanoutMap).next(stepSummarise),
+      ),
+      role: smRole,
+      logs: {
+        destination: fanoutLogGroup,
+        level: sfn.LogLevel.ALL,
+        includeExecutionData: true,
+      },
+      tracingEnabled: false,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // --- CloudFormation Outputs ---
 
     new cdk.CfnOutput(this, "RawBucketName", { value: this.rawBucket.bucketName });
+    new cdk.CfnOutput(this, "FanoutDoctextArn", { value: fanoutSm.stateMachineArn });
     new cdk.CfnOutput(this, "ParquetBucketName", { value: this.parquetBucket.bucketName });
     new cdk.CfnOutput(this, "LogsBucketName", { value: this.logsBucket.bucketName });
     new cdk.CfnOutput(this, "RawManifestTopicArn", { value: this.rawManifestTopic.topicArn });

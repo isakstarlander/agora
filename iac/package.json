@@ -8,7 +8,7 @@
     "diff": "cdk diff",
     "deploy": "cdk deploy",
     "deploy:all": "npx cdk deploy --all -c contactEmail=admin@moral.it --profile agora-se",
-    "detroy:all": "cdk destroy --all --profile agora-se",
+    "destroy:all": "cdk destroy --all --profile agora-se",
     "test": "jest",
     "lint": "eslint .",
     "format": "prettier --write ."

@@ -53,6 +53,20 @@ test("DataStack synthesises without error", () => {
     DeletionPolicy: "Retain",
     Properties: Match.objectLike({ BucketName: Match.stringLikeRegexp("agora-parquet-") }),
   }));
+
+  // fanout-doctext state machine assertions
+  tmpl.hasResourceProperties("AWS::StepFunctions::StateMachine", {
+    StateMachineName: "agora-fanout-doctext",
+    LoggingConfiguration: Match.objectLike({ Level: "ALL" }),
+  });
+  const smResources = tmpl.findResources("AWS::StepFunctions::StateMachine");
+  const smKey = Object.keys(smResources).find(
+    k => smResources[k].Properties.StateMachineName === "agora-fanout-doctext"
+  )!;
+  const defParts: string[] = smResources[smKey].Properties.DefinitionString["Fn::Join"][1];
+  const def = JSON.parse(defParts.join(""));
+  const mapState = Object.values(def.States).find((s: unknown) => (s as { Type: string }).Type === "Map") as { MaxConcurrency: number };
+  expect(mapState.MaxConcurrency).toBe(10);
 });
 
 test("ApiStack synthesises without error", () => {
