@@ -79,7 +79,7 @@ Create a DLQ (`agora-derive-dlq`) for messages that fail 3 times.
 
 ### 4. SQL files
 
-Ported from `../agora/agora/packages/db/migrations/*.sql` (the existing implementation's SQL) where applicable, with `pg_trgm`/`unaccent`/`to_tsvector` replaced by DuckDB equivalents. Representative shape of `party_cohesion.sql`:
+Ported from `./agora/packages/db/migrations/*.sql` (the existing implementation's SQL) where applicable, with `pg_trgm`/`unaccent`/`to_tsvector` replaced by DuckDB equivalents. Representative shape of `party_cohesion.sql`:
 
 ```sql
 WITH votes_with_context AS (

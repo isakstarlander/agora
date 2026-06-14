@@ -30,7 +30,7 @@ This PR does **not** implement document-body (full-text) fetching. That is PR-04
 
 All endpoints honour rate limiting via the standard `Retry-After` header on 429; our politeness rule is **max 4 requests / second, sequential, with exponential backoff** on 429 / 5xx. Each Lambda runs single-threaded — we are not the Riksdag's heaviest consumer by an order of magnitude.
 
-The existing (Supabase-based) implementation in `../agora/agora/scripts/ingest/` already contains working versions of these ingesters:
+The existing (Supabase-based) implementation in `./agora/scripts/ingest/` already contains working versions of these ingesters:
 
 - `scripts/ingest/documents.ts` — reference for document list pagination and enrichment.
 - `scripts/ingest/voting.ts` — reference for vote-list pagination.

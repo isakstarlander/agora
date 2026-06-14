@@ -51,9 +51,9 @@ Each PR has the same top-level sections:
 
 PRs **00 → 11**, in order, ship a working, useful, public Swedish-language dashboard served from AWS with ingestion running on schedule, observability wired, and cost alarms active. Everything beyond PR-11 is LLM polish (PR-12 / PR-13 / PR-14), CI automation (PR-15), the production sign-off checklist (PR-16), or the optional commercial product tier (PR-17). A single maintainer can complete PRs 00–11 in roughly 10–14 working days; PRs 12–14 add another ~1 week; PR-17 is 1–2 weeks part-time and strictly optional.
 
-## A note on reuse from `../agora/`
+## A note on reuse from `./agora/`
 
-The subdirectory `../agora/` contains the prior (Supabase-based) implementation. Multiple PRs — most visibly PR-03, PR-05, PR-06, PR-09, PR-13, PR-14 — **port** code from there rather than writing from scratch. Each PR calls out the specific source files it draws on. Do not rewrite logic that already works upstream; the port is a change of substrate, not a redesign.
+The subdirectory `./agora/` contains the prior (Supabase-based) implementation. Multiple PRs — most visibly PR-03, PR-05, PR-06, PR-09, PR-13, PR-14 — **port** code from there rather than writing from scratch. Each PR calls out the specific source files it draws on. Do not rewrite logic that already works upstream; the port is a change of substrate, not a redesign.
 
 ## Guardrails that apply to every PR
 

@@ -33,8 +33,8 @@ We care about the 8 sitting Swedish parties and the last four elections (2010, 2
 
 The Supabase-based prior implementation has both ingesters:
 
-- `../agora/agora/scripts/ingest/esv.ts` — ESV (Statskontoret predecessor). Parse is portable; the Supabase upsert is replaced with S3 write.
-- `../agora/agora/scripts/ingest/manifesto.ts` — Manifesto Project ingester. Same change.
+- `./agora/scripts/ingest/esv.ts` — ESV (Statskontoret predecessor). Parse is portable; the Supabase upsert is replaced with S3 write.
+- `./agora/scripts/ingest/manifesto.ts` — Manifesto Project ingester. Same change.
 
 ## Scope / Deliverables
 

@@ -2,7 +2,7 @@
 
 ## Outcome
 
-A new top-level `web/` directory containing a port of `../agora/agora/apps/web` with the following changes: static-export build (`output: 'export'`, `images.unoptimized: true`); all data fetching swapped from `@supabase/supabase-js` calls to `fetch('/v1/...')` against the API Gateway URL from PR-08; `posthog-js`, `@sentry/nextjs`, and the `/admin` + `/api-keys` routes removed; `next-intl` routing (Swedish primary, English best-effort) preserved. At the end of this PR `npm run build` produces `./web/out/` — a directory ready for PR-10 to upload to S3.
+A new top-level `web/` directory containing a port of `./agora/apps/web` with the following changes: static-export build (`output: 'export'`, `images.unoptimized: true`); all data fetching swapped from `@supabase/supabase-js` calls to `fetch('/v1/...')` against the API Gateway URL from PR-08; `posthog-js`, `@sentry/nextjs`, and the `/admin` + `/api-keys` routes removed; `next-intl` routing (Swedish primary, English best-effort) preserved. At the end of this PR `npm run build` produces `./web/out/` — a directory ready for PR-10 to upload to S3.
 
 ## Roadmap anchor
 
@@ -14,7 +14,7 @@ A new top-level `web/` directory containing a port of `../agora/agora/apps/web` 
 
 ## Context
 
-The existing implementation lives at `../agora/agora/apps/web` and is a **working** Next.js 16 App Router app with:
+The existing implementation lives at `./agora/apps/web` and is a **working** Next.js 16 App Router app with:
 
 - `next-intl` — bilingual routing (`sv`, `en`) via `[locale]` URL segment. Swedish-primary.
 - shadcn/ui + Radix + Tailwind 4 — component library.
@@ -37,9 +37,9 @@ The result is a directory that works identically in dev (`npm run dev`) and prod
 
 ### 1. Create `web/`
 
-At the repo root, create a new `web/` directory. Do **not** add it to the `../agora/` (existing) workspace — it is its own npm project.
+At the repo root, create a new `web/` directory. Do **not** add it to the `./agora/` (existing) workspace — it is its own npm project.
 
-Copy the relevant subtree from `../agora/agora/apps/web`:
+Copy the relevant subtree from `./agora/apps/web`:
 
 - `app/`, `components/`, `lib/`, `messages/` (translation JSON), `public/`, `next-intl.config.ts`, `tailwind.config.ts`, `tsconfig.json`.
 - Do **not** copy `next.config.ts` verbatim — we rewrite it in step 2.
@@ -148,7 +148,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 
 Then replace every `supabase.from(...).select(...)` call with the appropriate `apiGet('/v1/...')`. This is the biggest mechanical change. A grep over the ported code for `@supabase/supabase-js` and for `createClient(` finds the sites; each should map to one helper function in `lib/api.ts`.
 
-The call sites are concentrated (per the upstream RFCs in `../agora/agora/docs/`) in:
+The call sites are concentrated (per the upstream RFCs in `./agora/docs/`) in:
 
 - `components/party-cohesion-chart.tsx` → `apiGet<Envelope<Cohesion>>('/v1/party-cohesion?rm=...')`
 - `components/attendance-chart.tsx` → `.../v1/members/{iid}/attendance`
