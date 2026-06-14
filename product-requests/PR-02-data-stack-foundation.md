@@ -197,15 +197,15 @@ After `cdk deploy AgoraDataStack`:
 
 ## Acceptance criteria
 
-- [ ] `npx cdk deploy AgoraDataStack --profile agora-se` exits 0.
-- [ ] AWS console shows 3 S3 buckets in `eu-north-1` named as specified, all with block-all-public-access enabled.
-- [ ] `agora_ingest_cursors`, `agora_ingestion_runs`, `agora_summary_cache`, `agora_accountability_cache`, `agora_accountability_jobs`, `agora_ratelimit_counter` exist, all with on-demand billing.
-- [ ] TTL attribute `expires_at` is enabled on all tables except `agora_ingest_cursors`.
-- [ ] Glue database `agora_parquet` exists.
-- [ ] Secret `/agora/manifesto/api_key` exists, and after the manual step `aws secretsmanager get-secret-value ... | jq -r .SecretString | jq .api_key` returns the actual key.
-- [ ] Schedule group `agora-schedules` exists and is empty.
-- [ ] SNS topic `agora-raw-manifests` exists, no subscriptions.
-- [ ] Snapshot tests pass.
+- [x] `npx cdk deploy AgoraDataStack --profile agora-se` exits 0.
+- [x] AWS console shows 3 S3 buckets in `eu-north-1` named as specified, all with block-all-public-access enabled.
+- [x] `agora_ingest_cursors`, `agora_ingestion_runs`, `agora_summary_cache`, `agora_accountability_cache`, `agora_accountability_jobs`, `agora_ratelimit_counter` exist, all with on-demand billing.
+- [x] TTL attribute `expires_at` is enabled on all tables except `agora_ingest_cursors`.
+- [x] Glue database `agora_parquet` exists.
+- [x] Secret `/agora/manifesto/api_key` exists, and after the manual step `aws secretsmanager get-secret-value ... | jq -r .SecretString | jq .api_key` returns the actual key.
+- [x] Schedule group `agora-schedules` exists and is empty.
+- [x] SNS topic `agora-raw-manifests` exists, no subscriptions.
+- [x] Snapshot tests pass.
 
 ## Out of scope
 

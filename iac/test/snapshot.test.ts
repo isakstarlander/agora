@@ -1,5 +1,5 @@
 import * as cdk from "aws-cdk-lib";
-import { Template } from "aws-cdk-lib/assertions";
+import { Template, Match } from "aws-cdk-lib/assertions";
 import { AgoraContext } from "../lib/constructs/env";
 import { AgoraDataStack } from "../lib/data-stack";
 import { AgoraApiStack } from "../lib/api-stack";
@@ -42,6 +42,17 @@ test("DataStack synthesises without error", () => {
   const stack = new AgoraDataStack(app, "AgoraDataStack", stackProps);
   const tmpl = Template.fromStack(stack);
   expect(tmpl.toJSON()).toMatchSnapshot();
+
+  tmpl.resourceCountIs("AWS::S3::Bucket", 3);
+  tmpl.resourceCountIs("AWS::DynamoDB::Table", 6);
+  tmpl.hasResourceProperties(
+    "AWS::DynamoDB::Table",
+    Match.objectLike({ TimeToLiveSpecification: { AttributeName: "expires_at", Enabled: true } })
+  );
+  tmpl.hasResource("AWS::S3::Bucket", Match.objectLike({
+    DeletionPolicy: "Retain",
+    Properties: Match.objectLike({ BucketName: Match.stringLikeRegexp("agora-parquet-") }),
+  }));
 });
 
 test("ApiStack synthesises without error", () => {
