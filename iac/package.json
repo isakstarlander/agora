@@ -1,0 +1,32 @@
+{
+  "name": "@agora/iac",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "deploy:all": "npx cdk deploy --all -c contactEmail=admin@moral.it --profile agora-se",
+    "detroy:all": "cdk destroy --all --profile agora-se",
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/jest": "^29",
+    "@types/node": "^22",
+    "aws-cdk": "^2.1126.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^10",
+    "jest": "^29",
+    "prettier": "^3",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.259.0",
+    "constructs": "^10.6.0"
+  }
+}

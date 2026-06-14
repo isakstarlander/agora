@@ -286,13 +286,13 @@ Creates the CDK asset bucket (`cdk-hnb659fds-assets-<account>-eu-north-1`), role
 
 ## Acceptance criteria
 
-- [ ] `npm ci` completes with no vulnerabilities at severity `high` or above.
-- [ ] `npx cdk synth --all --profile agora-se` exits 0 and emits a `cdk.out/` containing 5 CloudFormation templates.
-- [ ] `npx cdk deploy --all --profile agora-se` creates 5 CloudFormation stacks (`AgoraDataStack`, `AgoraApiStack`, `AgoraLlmStack`, `AgoraWebStack`, `AgoraObsStack`), each with status `CREATE_COMPLETE`.
-- [ ] `npm test` passes (5 snapshot tests, one per stack).
-- [ ] Resource tags on the five stacks include `Project=agora`, `Env=prod`, `ManagedBy=cdk`.
+- [x] `npm ci` completes with no vulnerabilities at severity `high` or above.
+- [x] `npx cdk synth --all --profile agora-se` exits 0 and emits a `cdk.out/` containing 5 CloudFormation templates.
+- [x] `npx cdk deploy --all --profile agora-se` creates 5 CloudFormation stacks (`AgoraDataStack`, `AgoraApiStack`, `AgoraLlmStack`, `AgoraWebStack`, `AgoraObsStack`), each with status `CREATE_COMPLETE`.
+- [x] `npm test` passes (5 snapshot tests, one per stack).
+- [x] Resource tags on the five stacks include `Project=agora`, `Env=prod`, `ManagedBy=cdk`.
 - [ ] Running with `-c agora:env=dev` creates five **additional** stacks with the `dev-` prefix, without affecting prod ones.
-- [ ] `iac/README.md` exists and is accurate.
+- [x] `iac/README.md` exists and is accurate.
 
 ## Out of scope
 
